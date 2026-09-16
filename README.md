@@ -65,13 +65,39 @@ lines-in-transit-studio/
 │   └── samples/            # EXIF/위치정보가 안전하게 제거된 기본 테스트 샘플
 ├── vendor/
 │   ├── jszip.min.js        # 로컬 번들 ZIP 라이브러리
-│   └── exifr.mini.umd.js   # 로컬 번들 EXIF GPS 파서 라이브러리
+│   ├── exifr.mini.umd.js   # 로컬 번들 EXIF GPS 파서 라이브러리
+│   └── LICENSE-exifr.txt   # exifr MIT 라이선스 원문
 ├── tests/
 │   ├── verify_v1.py        # 정적 코드 & 서체 & DOM 구조 검증기
-│   └── test_functional.py  # DMS 좌표 변환, targetMB 클램프, 파일명 단위 테스트
+│   ├── test_functional.py  # DMS 좌표 변환, targetMB 클램프 알고리즘 단위 테스트
+│   └── test_browser.py     # Playwright 기반 실제 브라우저(MS Edge) E2E 통합 테스트
 ├── vercel.json             # Vercel 보안 및 정적 캐싱 헤더
 └── README.md
 ```
+
+---
+
+## 🧪 테스트 실행 방법
+
+```bash
+# 1. 정적 코드 및 서체·DOM 무결성 검증
+python -X utf8 tests/verify_v1.py
+
+# 2. 핵심 알고리즘(DMS, 용량 클램프, 파일명) 단위 테스트
+python -X utf8 tests/test_functional.py
+
+# 3. Playwright 기반 실제 브라우저 E2E 통합 테스트 (상태 보존, GPS 파싱, 안전영역 분리)
+python -X utf8 tests/test_browser.py
+```
+
+---
+
+## 📜 오픈소스 라이선스 안내 (Open Source Licenses)
+
+- **Cormorant Garamond**: SIL Open Font License 1.1 ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **exifr**: MIT License by Mike Kovařík ([LICENSE-exifr.txt](vendor/LICENSE-exifr.txt))
+- **JSZip**: Dual MIT / GPLv3 License
+- **Address Data**: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL)
 
 ---
 
@@ -90,7 +116,7 @@ python -m http.server 3000
 
 ## 🌐 Vercel 배포 방법 (Zero-Config)
 
-본 프로젝트는 별도 번들러와 빌드 도구 없이 동작하는 Vanilla Web Stack이며, ZIP 생성 기능에 한해 로컬 JSZip을 사용합니다.
+본 프로젝트는 별도 번들러와 빌드 도구 없이 동작하는 Vanilla Web Stack이며, ZIP 생성 및 EXIF 분석에 로컬 번들 라이브러리를 사용합니다.
 
 ```bash
 cd lines-in-transit-studio

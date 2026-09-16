@@ -726,3 +726,16 @@ input[type="text"]:focus, select:focus, textarea:focus {
   font-size: 0.68rem;
   color: var(--text-muted);
 }
+
+.gps-attribution {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  line-height: 1.3;
+}
+
+.gps-attribution a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

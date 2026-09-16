@@ -459,7 +459,6 @@ class App {
   }
 
   setMode(mode) {
-    this.imageLoadRequestId++;
     this.state.mode = mode;
     this.state.panX = 0;
     this.state.panY = 0;
@@ -499,10 +498,21 @@ class App {
 
   static toDMS(coordinate, isLatitude) {
     const absolute = Math.abs(coordinate);
-    const degrees = Math.floor(absolute);
+    let degrees = Math.floor(absolute);
     const minutesNotTruncated = (absolute - degrees) * 60;
-    const minutes = Math.floor(minutesNotTruncated);
-    const seconds = Math.round((minutesNotTruncated - minutes) * 60);
+    let minutes = Math.floor(minutesNotTruncated);
+    let seconds = Math.round((minutesNotTruncated - minutes) * 60);
+
+    // Handle 60 seconds rounding boundary condition
+    if (seconds >= 60) {
+      seconds = 0;
+      minutes += 1;
+    }
+    if (minutes >= 60) {
+      minutes = 0;
+      degrees += 1;
+    }
+
     const direction = isLatitude ? (coordinate >= 0 ? 'N' : 'S') : (coordinate >= 0 ? 'E' : 'W');
     return `${degrees}°${String(minutes).padStart(2, '0')}′${String(seconds).padStart(2, '0')}″${direction}`;
   }
@@ -553,6 +563,9 @@ class App {
 
   async handleReverseGeocode() {
     if (!this.currentGps) return;
+    if (this.isGeocoding) return;
+
+    this.isGeocoding = true;
     this.btnFetchAddress.disabled = true;
     this.btnFetchAddress.textContent = '조회 중...';
     this.gpsStatusInfo.textContent = '좌표 역지오코딩 조회 중...';
@@ -576,7 +589,7 @@ class App {
     // 2. Direct client fallback to OpenStreetMap Nominatim
     if (!addressData) {
       try {
-        const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=ko,en&email=lines-in-transit-studio@jeongmingz.dev`;
+        const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=ko,en`;
         const resp = await fetch(nomUrl);
         if (resp.ok) {
           const data = await resp.json();
@@ -593,9 +606,6 @@ class App {
         console.warn('Direct Nominatim query failed:', e);
       }
     }
-
-    this.btnFetchAddress.disabled = false;
-    this.btnFetchAddress.textContent = '🔍 주소 다시 찾기';
 
     if (addressData && addressData.shortLabel) {
       this.currentGps.shortAddress = addressData.shortLabel;
@@ -617,6 +627,21 @@ class App {
       this.gpsStatusInfo.textContent = '주소를 찾을 수 없습니다. (좌표는 유지됨)';
       this.showToast('주소 조회에 실패했습니다. 직접 입력해 주세요.');
     }
+
+    // 2-second cooldown to adhere to Nominatim 1 request/sec policy
+    let cooldown = 2;
+    this.btnFetchAddress.textContent = `조회 완료 (${cooldown}초)`;
+    const timer = setInterval(() => {
+      cooldown--;
+      if (cooldown <= 0) {
+        clearInterval(timer);
+        this.btnFetchAddress.disabled = false;
+        this.btnFetchAddress.textContent = '🔍 주소 다시 찾기';
+        this.isGeocoding = false;
+      } else {
+        this.btnFetchAddress.textContent = `조회 완료 (${cooldown}초)`;
+      }
+    }, 1000);
   }
 
   handleAppendCoordsToggle() {
@@ -691,8 +716,21 @@ class App {
     }
   }
 
-  loadInitialImage() {
-    this.loadSample(SAMPLE_PHOTOS[0]);
+  /**
+   * Only load initial image pixels, preserving user's saved state in localStorage
+   */
+  async loadInitialImage() {
+    const requestId = ++this.imageLoadRequestId;
+    try {
+      const image = await ImageLoader.loadFromUrl(SAMPLE_PHOTOS[0].path);
+      if (requestId !== this.imageLoadRequestId) return;
+      this.currentImage = image;
+      this.scheduleRender();
+    } catch (err) {
+      if (requestId === this.imageLoadRequestId) {
+        console.warn('Initial image load error:', err);
+      }
+    }
   }
 
   /**

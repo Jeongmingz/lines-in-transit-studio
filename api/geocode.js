@@ -1,9 +1,13 @@
 ﻿/**
  * Lines in Transit Studio - Reverse Geocoding Serverless Proxy
  * Securely transforms GPS coordinates (lat, lon) into clean editorial location strings.
- * Primary: OpenStreetMap Nominatim with compliant User-Agent
+ * Primary: OpenStreetMap Nominatim with compliant User-Agent & in-memory caching
  * Optional: Kakao Maps coord2regioncode if KAKAO_REST_API_KEY environment variable is configured.
  */
+
+// In-memory cache & rate limiter for serverless instance lifetime
+const cache = new Map();
+let lastNominatimRequestTime = 0;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -29,6 +33,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: '유효한 위도(-90~90) 및 경도(-180~180) 값을 입력해 주세요.' });
   }
 
+  const cacheKey = `${parsedLat.toFixed(4)},${parsedLon.toFixed(4)},${lang}`;
+  if (cache.has(cacheKey)) {
+    return res.status(200).json({ ...cache.get(cacheKey), cached: true });
+  }
+
   // 1. Optional Kakao Maps integration if server environment variable is present
   if (process.env.KAKAO_REST_API_KEY) {
     try {
@@ -49,7 +58,7 @@ export default async function handler(req, res) {
           const shortLabel = [region2, region3].filter(Boolean).join(' ') || region1;
           const fullLabel = [region1, region2, region3].filter(Boolean).join(' ');
 
-          return res.status(200).json({
+          const result = {
             success: true,
             source: 'kakao',
             shortLabel,
@@ -57,8 +66,12 @@ export default async function handler(req, res) {
             city: region1,
             district: region2,
             neighborhood: region3,
-            country: '대한민국'
-          });
+            country: '대한민국',
+            attribution: '카카오맵'
+          };
+
+          cache.set(cacheKey, result);
+          return res.status(200).json(result);
         }
       }
     } catch (err) {
@@ -66,13 +79,21 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. Default OpenStreetMap Nominatim Provider
+  // 2. Default OpenStreetMap Nominatim Provider (Respect 1 request/sec rate limit)
   try {
-    const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${parsedLat}&lon=${parsedLon}&accept-language=${encodeURIComponent(lang)}&email=lines-in-transit-studio@jeongmingz.dev`;
+    const now = Date.now();
+    const elapsed = now - lastNominatimRequestTime;
+    if (elapsed < 1000) {
+      await new Promise(r => setTimeout(r, 1000 - elapsed));
+    }
+    lastNominatimRequestTime = Date.now();
+
+    const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${parsedLat}&lon=${parsedLon}&accept-language=${encodeURIComponent(lang)}`;
 
     const nominatimResp = await fetch(nominatimUrl, {
       headers: {
-        'User-Agent': 'LinesInTransitStudio/1.0 (https://lines-in-transit-studio.vercel.app; lines-in-transit-studio@jeongmingz.dev)'
+        'User-Agent': 'LinesInTransitStudio/1.0 (+https://github.com/Jeongmingz/lines-in-transit-studio)',
+        'Referer': 'https://lines-in-transit-studio.vercel.app/'
       }
     });
 
@@ -109,7 +130,7 @@ export default async function handler(req, res) {
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .join(' ');
 
-    return res.status(200).json({
+    const result = {
       success: true,
       source: 'nominatim',
       shortLabel,
@@ -118,8 +139,16 @@ export default async function handler(req, res) {
       district,
       state,
       country,
-      attribution: '© OpenStreetMap contributors'
-    });
+      attribution: 'Address data © OpenStreetMap contributors'
+    };
+
+    if (cache.size > 200) {
+      const firstKey = cache.keys().next().value;
+      cache.delete(firstKey);
+    }
+    cache.set(cacheKey, result);
+
+    return res.status(200).json(result);
 
   } catch (err) {
     return res.status(500).json({

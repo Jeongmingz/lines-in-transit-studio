@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Lines in Transit Studio - Functional Unit Tests
 Verifies core algorithmic and mathematical business logic:
@@ -26,6 +26,14 @@ def to_dms(coordinate, is_latitude):
     minutes_not_truncated = (absolute - degrees) * 60
     minutes = math.floor(minutes_not_truncated)
     seconds = round((minutes_not_truncated - minutes) * 60)
+
+    if seconds >= 60:
+        seconds = 0
+        minutes += 1
+    if minutes >= 60:
+        minutes = 0
+        degrees += 1
+
     direction = ('N' if coordinate >= 0 else 'S') if is_latitude else ('E' if coordinate >= 0 else 'W')
     return f"{degrees}°{minutes:02d}′{seconds:02d}″{direction}"
 
@@ -35,6 +43,10 @@ def test_dms_conversion():
     tokyo_lon = 139.6503
     assert_equal(to_dms(tokyo_lat, True), "35°40′34″N", "Tokyo Latitude to DMS")
     assert_equal(to_dms(tokyo_lon, False), "139°39′01″E", "Tokyo Longitude to DMS")
+
+    # Boundary rounding carry-over (e.g. 59.6 seconds rolls over to next minute/degree)
+    boundary_coord = 12.9999
+    assert_equal(to_dms(boundary_coord, True), "13°00′00″N", "DMS 60-second boundary carry-over")
 
     # Southern & Western Hemispheres
     sydney_lat = -33.8688
