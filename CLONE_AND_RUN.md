@@ -7,7 +7,7 @@
 ## 1. 레포지토리 클론 (Git Clone)
 
 ```bash
-git clone https://github.com/[YOUR_GITHUB_USERNAME]/lines-in-transit-studio.git
+git clone https://github.com/Jeongmingz/lines-in-transit-studio.git
 cd lines-in-transit-studio
 ```
 

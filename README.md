@@ -81,7 +81,7 @@ git init
 git add .
 git commit -m "feat: Initial release Lines in Transit Studio"
 git branch -M main
-git remote add origin https://github.com/[사용자계정]/lines-in-transit-studio.git
+git remote add origin https://github.com/Jeongmingz/lines-in-transit-studio.git
 git push -u origin main
 ```
 
