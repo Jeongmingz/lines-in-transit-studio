@@ -9,8 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <!-- Local Vendored JSZip for offline/reliable ZIP export -->
+  <!-- Local Vendored JSZip & exifr for offline/reliable export & GPS analysis -->
   <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/exifr.mini.umd.js"></script>
 </head>
 <body>
 
@@ -20,10 +21,10 @@
       <span>LINES IN TRANSIT</span>
       <span class="brand-badge">STUDIO</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);">
-      <span style="display: flex; align-items: center; gap: 0.25rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);" title="사진과 편집 내용은 브라우저에서 처리됩니다. 주소 자동 찾기를 사용하는 경우에만 사진에서 추출한 GPS 좌표가 주소 조회 서비스로 전송됩니다. 사진 원본은 전송되지 않습니다.">
+      <span style="display: flex; align-items: center; gap: 0.35rem;">
         <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-        100% 클라이언트 렌더링 (업로드한 사진은 서버로 전송되지 않음)
+        <span>사진 브라우저 처리 (원본 미전송) · GPS 선택 조회</span>
       </span>
     </div>
   </header>
@@ -162,9 +163,42 @@
             </div>
           </div>
           <div class="form-group">
-            <label>도시 및 좌표 / 장소</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label style="margin: 0;">도시 및 좌표 / 장소</label>
+              <span id="gps-indicator" class="gps-indicator" style="display: none;">
+                <span class="gps-dot"></span>
+                <span id="gps-indicator-text">GPS 감지됨</span>
+              </span>
+            </div>
             <input type="text" id="input-location" value="35°40'N · Tokyo City Center">
           </div>
+
+          <!-- GPS Metadata & Reverse Geocoding Card -->
+          <div id="gps-card" class="gps-card" style="display: none;">
+            <div class="gps-card-top">
+              <span class="gps-badge">📍 GPS 감지</span>
+              <span id="gps-coords-text" class="gps-coords-text">35.6762, 139.6503</span>
+            </div>
+            <div id="gps-dms-text" class="gps-dms-text">35°40′34″N · 139°39′01″E</div>
+            <div class="gps-card-actions">
+              <button id="btn-fetch-address" class="btn-secondary btn-sm" type="button">
+                🔍 주소 자동 찾기
+              </button>
+              <label class="gps-append-label" title="장소명 뒤에 도분초(DMS) 좌표를 함께 표기합니다">
+                <input type="checkbox" id="chk-append-coords">
+                <span>좌표 병기</span>
+              </label>
+            </div>
+            <div id="gps-status-info" class="gps-status-info"></div>
+            <div class="gps-privacy-note">
+              ※ 클릭 시에만 좌표가 역지오코딩 서비스로 전송되며 사진 원본은 전송되지 않습니다.
+            </div>
+          </div>
+
+          <div id="gps-none-card" class="gps-none-card" style="display: none;">
+            <span style="opacity: 0.7;">📍 위치 메타데이터 없음 (직접 입력 가능)</span>
+          </div>
+
           <div class="form-group">
             <label>마스트헤드 상단 타이틀</label>
             <input type="text" id="input-masthead" value="LINES IN TRANSIT">

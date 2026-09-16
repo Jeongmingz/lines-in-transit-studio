@@ -24,18 +24,24 @@
    - 렌더링 후 Blob 용량을 확인하여, 사용자가 지정한 목표 용량(1.0MB / 1.4MB / 2.0MB / 사용자 정의)을 초과할 경우 품질을 0.94에서 단계적으로 미세 조정합니다.
    - 인코딩 완료 시 토스트 메시지를 통해 목표 용량 달성 여부와 최종 품질을 투명하게 안내합니다.
    - *목표 용량은 전송 편의성과 디테일의 균형을 위한 앱 내부 최적화 기준이며, 특정 플랫폼의 공식 기준이 아닙니다.*
-6. **모바일 다운로드 편의성 (개별 저장, Web Share, ZIP)**:
+6. **EXIF GPS 로컬 분석 & 프라이버시 중심 역지오코딩**:
+   - 사진 선택 시 브라우저 내에서 번들된 `exifr`를 통해 GPS 좌표(위도·경도 및 도분초 DMS)를 100% 로컬 분석합니다. (사진 원본은 외부 서버로 절대 전송되지 않음)
+   - 사용자가 `[주소 자동 찾기]` 버튼을 클릭할 때만 좌표가 지오코딩 서비스(OpenStreetMap Nominatim / 카카오맵 프록시)로 전달되어 도시·구역·국가 중심 주소로 장소란을 자동 완성합니다.
+   - '좌표 병기' 옵션으로 장소명과 `35°40′34″N · 139°39′01″E` 도분초 표기를 조합할 수 있습니다.
+   - 최종 다운로드 이미지에는 캔버스 재생성을 통해 원본 사진의 숨겨진 GPS 메타데이터가 완전히 제거되어 인스타그램 등 SNS 업로드 시 개인 프라이버시가 보호됩니다.
+7. **모바일 다운로드 편의성 (개별 저장, Web Share, ZIP)**:
    - 슬라이드 1 / 슬라이드 2 개별 저장
    - `navigator.canShare` 지원 환경에서 Web Share API 모바일 다중 사진 앱 저장 / AirDrop 공유
    - 오프라인에서도 작동하는 로컬 `vendor/jszip.min.js` 기반 ZIP 일괄 다운로드
-7. **구조화된 카메라 & 필름 시뮬레이션 프리셋**:
+8. **구조화된 카메라 & 필름 시뮬레이션 프리셋**:
    - `FUJIFILM X-T30 II · CLASSIC CHROME SOOC`
    - `FUJIFILM X-T30 II · CLASSIC NEG SOOC`
    - `APPLE IPOD TOUCH 7 · VINTAGE DIGITAL`
    - 직접 입력 커스텀 모드 (슬라이드 2에도 동적 반영)
-8. **100% 클라이언트 렌더링 & 프라이버시**:
-   - 모든 이미지와 텍스트는 브라우저 내부 캔버스에서만 처리되며, 사진이 외부 서버로 전송되지 않습니다.
+9. **100% 클라이언트 렌더링 & 프라이버시**:
+   - 모든 사진 렌더링과 텍스트 조판은 브라우저 내부 캔버스에서만 처리됩니다.
    - `localStorage`에는 편집 텍스트 설정값만 저장되며, 고용량 바이너리 사진 데이터는 저장하지 않아 용량 한도를 초과하지 않습니다.
+   - 영문 세리프는 로컬 번들링 Cormorant Garamond로 모든 기기에서 동일 조판을 보장하며, 한글은 Google Fonts 및 OS별 명조/고딕 폴백으로 유려하게 렌더링됩니다.
 
 ---
 
@@ -51,12 +57,18 @@ lines-in-transit-studio/
 │   ├── image-loader.js     # HEIC/RAW 검증, 디코딩, 메모리 안전 다운스케일
 │   ├── canvas-engine.js    # 고화질 리샘플링, 타이포 오토스케일, 온디맨드 마스터 렌더러
 │   ├── export-engine.js    # 가변 품질 Blob 인코딩, Web Share API, ZIP 내보내기
-│   └── app.js              # RAF 루프, 핀치 줌, 터치/마우스 조작, 안전한 상태 관리
+│   └── app.js              # RAF 루프, 핀치 줌, EXIF GPS 추출, 상태 관리
+├── api/
+│   └── geocode.js          # Vercel Serverless 역지오코딩 프록시 (Nominatim / Kakao)
 ├── assets/
-│   ├── fonts/              # 로컬 번들링 Cormorant Garamond woff2 서체
+│   ├── fonts/              # 로컬 번들링 Cormorant Garamond woff2 서체 (SIL OFL)
 │   └── samples/            # EXIF/위치정보가 안전하게 제거된 기본 테스트 샘플
 ├── vendor/
-│   └── jszip.min.js        # 오프라인 독립 번들 ZIP 라이브러리
+│   ├── jszip.min.js        # 로컬 번들 ZIP 라이브러리
+│   └── exifr.mini.umd.js   # 로컬 번들 EXIF GPS 파서 라이브러리
+├── tests/
+│   ├── verify_v1.py        # 정적 코드 & 서체 & DOM 구조 검증기
+│   └── test_functional.py  # DMS 좌표 변환, targetMB 클램프, 파일명 단위 테스트
 ├── vercel.json             # Vercel 보안 및 정적 캐싱 헤더
 └── README.md
 ```

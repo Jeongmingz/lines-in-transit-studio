@@ -1,4 +1,9 @@
 ﻿# -*- coding: utf-8 -*-
+"""
+Lines in Transit Studio - Static Code & Asset Verification
+Verifies source code invariants, DOM attributes, vendor assets, and CSS rules.
+"""
+
 import hashlib
 import os
 import sys
@@ -7,10 +12,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def assert_true(condition, msg):
     if not condition:
-        print(f"FAIL: {msg}")
+        print(f"[FAIL] {msg}")
         sys.exit(1)
     else:
-        print(f"PASS: {msg}")
+        print(f"[PASS] {msg}")
 
 def check_fonts():
     f600_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'cormorant-garamond-normal-600.woff2')
@@ -46,6 +51,7 @@ def check_export_engine():
     assert_true("!blob" in content, "canvas.toBlob null checks present")
     assert_true("targetMet" in content, "targetMet boolean returned in encodeCanvas")
     assert_true("qualityReduced" in content, "qualityReduced boolean returned in encodeCanvas")
+    assert_true("Math.max(0.5, Math.min(5.0, parsedMB))" in content, "targetMB clamped between 0.5MB and 5.0MB")
 
 def check_html_and_css():
     html_path = os.path.join(BASE_DIR, 'index.html')
@@ -58,10 +64,13 @@ def check_html_and_css():
     assert_true('role="tabpanel"' in html_content, "tabpanel ARIA role present in index.html")
     assert_true("guides-single" in html_content and "guides-seamless" in html_content, "Split guides structure in HTML")
     assert_true("cut-badge" in html_content, "Central cut badge element present in HTML")
+    assert_true("vendor/exifr.mini.umd.js" in html_content, "exifr script tag present in index.html")
+    assert_true("gps-card" in html_content and "btn-fetch-address" in html_content, "GPS card and reverse geocode button present in HTML")
 
     assert_true(".cut-badge" in css_content and "top: 8px" in css_content, "Cut badge pinned to top in CSS")
     assert_true(".guide-slide-box.slide-1" in css_content, "Slide 1 safe area CSS rule present")
     assert_true(".guide-slide-box.slide-2" in css_content, "Slide 2 safe area CSS rule present")
+    assert_true(".gps-card" in css_content and ".gps-badge" in css_content, "GPS card CSS styles present")
 
 def check_app_controller():
     path = os.path.join(BASE_DIR, 'js', 'app.js')
@@ -73,6 +82,20 @@ def check_app_controller():
     assert_true("setExportButtonsDisabled" in content, "Export button disable helper present")
     assert_true("renderToCanvas(this.mainCanvas, this.currentImage, this.state, 0.5)" in content, "Main preview renders at 0.5 scale")
     assert_true("ArrowRight" in content and "ArrowLeft" in content, "Keyboard arrow navigation for tabs present")
+    assert_true("this.imageLoadRequestId" in content, "imageLoadRequestId race condition guard present")
+    assert_true("handleReverseGeocode" in content, "handleReverseGeocode method present")
+    assert_true("extractGps" in content, "extractGps method present")
+
+def check_api_and_vendor():
+    exifr_path = os.path.join(BASE_DIR, 'vendor', 'exifr.mini.umd.js')
+    geocode_path = os.path.join(BASE_DIR, 'api', 'geocode.js')
+
+    assert_true(os.path.isfile(exifr_path), "vendor/exifr.mini.umd.js exists")
+    assert_true(os.path.isfile(geocode_path), "api/geocode.js exists")
+
+    geocode_content = open(geocode_path, 'r', encoding='utf-8').read()
+    assert_true("nominatim.openstreetmap.org" in geocode_content, "Nominatim reverse geocoding in api/geocode.js")
+    assert_true("LinesInTransitStudio" in geocode_content, "Compliant User-Agent in api/geocode.js")
 
 def check_readme():
     path = os.path.join(BASE_DIR, 'README.md')
@@ -82,11 +105,12 @@ def check_readme():
     assert_true("부드러운 인터랙션을 목표로 최적화되었습니다" in content, "Realistic performance description present in README")
 
 if __name__ == '__main__':
-    print("--- Running Lines in Transit Studio v1.0 Automated Verification ---")
+    print("=== Lines in Transit Studio Static Verification ===")
     check_fonts()
     check_canvas_engine()
     check_export_engine()
     check_html_and_css()
     check_app_controller()
+    check_api_and_vendor()
     check_readme()
-    print("\n[SUCCESS] ALL 10 TEST SUITES PASSED SUCCESSFULLY!")
+    print("\n[SUCCESS] ALL STATIC CHECKS PASSED")

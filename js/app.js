@@ -17,6 +17,8 @@ class App {
     this.isRendering = false;
     this.renderDirty = false;
     this.isExporting = false;
+    this.imageLoadRequestId = 0;
+    this.currentGps = null;
 
     // DOM Elements
     this.mainCanvas = document.getElementById('main-canvas');
@@ -25,6 +27,16 @@ class App {
     this.filenamePreview = document.getElementById('filename-preview');
     this.zoomSlider = document.getElementById('zoom-slider');
     this.zoomBadge = document.getElementById('zoom-val-badge');
+
+    // GPS Elements
+    this.gpsIndicator = document.getElementById('gps-indicator');
+    this.gpsCard = document.getElementById('gps-card');
+    this.gpsNoneCard = document.getElementById('gps-none-card');
+    this.gpsCoordsText = document.getElementById('gps-coords-text');
+    this.gpsDmsText = document.getElementById('gps-dms-text');
+    this.btnFetchAddress = document.getElementById('btn-fetch-address');
+    this.chkAppendCoords = document.getElementById('chk-append-coords');
+    this.gpsStatusInfo = document.getElementById('gps-status-info');
 
     this.initPresetsUI();
     this.initEventListeners();
@@ -328,7 +340,8 @@ class App {
       targetMbSelect.addEventListener('change', (e) => {
         if (e.target.value === 'custom') {
           targetMbInput.style.display = 'block';
-          this.state.autoFitTargetMB = parseFloat(targetMbInput.value) || 1.4;
+          const val = parseFloat(targetMbInput.value) || 1.4;
+          this.state.autoFitTargetMB = Math.max(0.5, Math.min(5.0, val));
         } else {
           targetMbInput.style.display = 'none';
           this.state.autoFitTargetMB = parseFloat(e.target.value);
@@ -337,9 +350,18 @@ class App {
       });
 
       targetMbInput.addEventListener('input', (e) => {
-        this.state.autoFitTargetMB = parseFloat(e.target.value) || 1.4;
+        const val = parseFloat(e.target.value) || 1.4;
+        this.state.autoFitTargetMB = Math.max(0.5, Math.min(5.0, val));
         this.saveState();
       });
+    }
+
+    // GPS Reverse Geocoding Controls
+    if (this.btnFetchAddress) {
+      this.btnFetchAddress.addEventListener('click', () => this.handleReverseGeocode());
+    }
+    if (this.chkAppendCoords) {
+      this.chkAppendCoords.addEventListener('change', () => this.handleAppendCoordsToggle());
     }
 
     document.getElementById('btn-download-single').addEventListener('click', () => this.exportSingle());
@@ -437,6 +459,7 @@ class App {
   }
 
   setMode(mode) {
+    this.imageLoadRequestId++;
     this.state.mode = mode;
     this.state.panX = 0;
     this.state.panY = 0;
@@ -474,9 +497,155 @@ class App {
     }
   }
 
-  async handleFile(file) {
+  static toDMS(coordinate, isLatitude) {
+    const absolute = Math.abs(coordinate);
+    const degrees = Math.floor(absolute);
+    const minutesNotTruncated = (absolute - degrees) * 60;
+    const minutes = Math.floor(minutesNotTruncated);
+    const seconds = Math.round((minutesNotTruncated - minutes) * 60);
+    const direction = isLatitude ? (coordinate >= 0 ? 'N' : 'S') : (coordinate >= 0 ? 'E' : 'W');
+    return `${degrees}°${String(minutes).padStart(2, '0')}′${String(seconds).padStart(2, '0')}″${direction}`;
+  }
+
+  async extractGps(file) {
+    if (typeof window.exifr === 'undefined' || !window.exifr.gps) {
+      console.warn('exifr library not loaded');
+      return null;
+    }
     try {
-      this.currentImage = await ImageLoader.loadFromFile(file);
+      const gps = await window.exifr.gps(file);
+      if (gps && typeof gps.latitude === 'number' && typeof gps.longitude === 'number') {
+        const dmsLat = App.toDMS(gps.latitude, true);
+        const dmsLon = App.toDMS(gps.longitude, false);
+        return {
+          latitude: gps.latitude,
+          longitude: gps.longitude,
+          dms: `${dmsLat} · ${dmsLon}`,
+          shortAddress: '',
+          fullAddress: ''
+        };
+      }
+    } catch (e) {
+      console.warn('EXIF parsing error:', e);
+    }
+    return null;
+  }
+
+  updateGpsUI(gps) {
+    this.currentGps = gps;
+    if (gps) {
+      if (this.gpsIndicator) this.gpsIndicator.style.display = 'inline-flex';
+      if (this.gpsCard) this.gpsCard.style.display = 'block';
+      if (this.gpsNoneCard) this.gpsNoneCard.style.display = 'none';
+      if (this.gpsCoordsText) this.gpsCoordsText.textContent = `${gps.latitude.toFixed(4)}, ${gps.longitude.toFixed(4)}`;
+      if (this.gpsDmsText) this.gpsDmsText.textContent = gps.dms;
+      if (this.gpsStatusInfo) this.gpsStatusInfo.textContent = '';
+      if (this.btnFetchAddress) {
+        this.btnFetchAddress.disabled = false;
+        this.btnFetchAddress.textContent = '🔍 주소 자동 찾기';
+      }
+    } else {
+      if (this.gpsIndicator) this.gpsIndicator.style.display = 'none';
+      if (this.gpsCard) this.gpsCard.style.display = 'none';
+      if (this.gpsNoneCard) this.gpsNoneCard.style.display = 'block';
+    }
+  }
+
+  async handleReverseGeocode() {
+    if (!this.currentGps) return;
+    this.btnFetchAddress.disabled = true;
+    this.btnFetchAddress.textContent = '조회 중...';
+    this.gpsStatusInfo.textContent = '좌표 역지오코딩 조회 중...';
+
+    const { latitude, longitude } = this.currentGps;
+    let addressData = null;
+
+    // 1. Try Vercel Serverless Function first
+    try {
+      const resp = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}&lang=ko,en`);
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.success) {
+          addressData = json;
+        }
+      }
+    } catch (e) {
+      console.warn('API route not available, falling back to direct Nominatim client query:', e);
+    }
+
+    // 2. Direct client fallback to OpenStreetMap Nominatim
+    if (!addressData) {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=ko,en&email=lines-in-transit-studio@jeongmingz.dev`;
+        const resp = await fetch(nomUrl);
+        if (resp.ok) {
+          const data = await resp.json();
+          const addr = data.address || {};
+          const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+          const district = addr.suburb || addr.borough || addr.quarter || addr.city_district || addr.neighbourhood || '';
+          const state = addr.state || addr.province || '';
+          const country = addr.country || '';
+          const shortLabel = (city && district) ? `${city} · ${district}` : (city || district || state || country || '위치 미상');
+          const fullLabel = [country, state, city, district].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(' ');
+          addressData = { success: true, shortLabel, fullLabel };
+        }
+      } catch (e) {
+        console.warn('Direct Nominatim query failed:', e);
+      }
+    }
+
+    this.btnFetchAddress.disabled = false;
+    this.btnFetchAddress.textContent = '🔍 주소 다시 찾기';
+
+    if (addressData && addressData.shortLabel) {
+      this.currentGps.shortAddress = addressData.shortLabel;
+      this.currentGps.fullAddress = addressData.fullLabel || addressData.shortLabel;
+
+      let finalLocation = addressData.shortLabel;
+      if (this.chkAppendCoords && this.chkAppendCoords.checked) {
+        finalLocation = `${finalLocation} · ${this.currentGps.dms}`;
+      }
+
+      this.state.location = finalLocation;
+      document.getElementById('input-location').value = finalLocation;
+      this.saveState();
+      this.updateFilenamePreview();
+      this.scheduleRender();
+      this.gpsStatusInfo.textContent = `✓ 주소 적용: ${addressData.fullLabel || addressData.shortLabel}`;
+      this.showToast(`장소 적용 완료: ${addressData.shortLabel}`);
+    } else {
+      this.gpsStatusInfo.textContent = '주소를 찾을 수 없습니다. (좌표는 유지됨)';
+      this.showToast('주소 조회에 실패했습니다. 직접 입력해 주세요.');
+    }
+  }
+
+  handleAppendCoordsToggle() {
+    if (!this.currentGps || !this.currentGps.shortAddress) return;
+    const shouldAppend = this.chkAppendCoords.checked;
+    let loc = this.currentGps.shortAddress;
+    if (shouldAppend) {
+      loc = `${loc} · ${this.currentGps.dms}`;
+    }
+    this.state.location = loc;
+    document.getElementById('input-location').value = loc;
+    this.saveState();
+    this.updateFilenamePreview();
+    this.scheduleRender();
+  }
+
+  async handleFile(file) {
+    const requestId = ++this.imageLoadRequestId;
+    try {
+      // 1. Read EXIF GPS from original File before canvas decoding
+      const gps = await this.extractGps(file);
+      if (requestId !== this.imageLoadRequestId) return;
+      this.updateGpsUI(gps);
+
+      // 2. Decode and downscale image
+      const image = await ImageLoader.loadFromFile(file);
+      if (requestId !== this.imageLoadRequestId) return;
+
+      this.currentImage = image;
       this.state.panX = 0;
       this.state.panY = 0;
       this.state.zoom = 1.0;
@@ -484,13 +653,19 @@ class App {
       this.scheduleRender();
       this.showToast('사진이 로드되었습니다.');
     } catch (err) {
-      alert(err.message);
+      if (requestId === this.imageLoadRequestId) {
+        alert(err.message);
+      }
     }
   }
 
   async loadSample(sample) {
+    const requestId = ++this.imageLoadRequestId;
     try {
-      this.currentImage = await ImageLoader.loadFromUrl(sample.path);
+      const image = await ImageLoader.loadFromUrl(sample.path);
+      if (requestId !== this.imageLoadRequestId) return;
+
+      this.currentImage = image;
       this.state.mode = sample.mode;
       this.state.issueNo = sample.issueNo;
       this.state.photoTitle = sample.title;
@@ -505,11 +680,14 @@ class App {
         this.state.customCameraTag = preset.label;
       }
 
+      this.updateGpsUI(null);
       this.initPresetsUI();
       this.scheduleRender();
       this.showToast(`샘플 '${sample.name}' 적용 완료`);
     } catch (err) {
-      console.warn('Sample load error:', err);
+      if (requestId === this.imageLoadRequestId) {
+        console.warn('Sample load error:', err);
+      }
     }
   }
 

@@ -53,8 +53,10 @@ export class ExportEngine {
     }
 
     // 'auto' Adaptive Quality Mode:
-    // Starts at 0.94, drops iteratively if exceeds target size (default 1.4MB)
-    const targetBytes = (parseFloat(targetMB) || 1.4) * 1024 * 1024;
+    // Starts at 0.94, drops iteratively if exceeds target size (default 1.4MB, clamped between 0.5MB and 5.0MB)
+    const parsedMB = parseFloat(targetMB) || 1.4;
+    const clampedMB = Math.max(0.5, Math.min(5.0, parsedMB));
+    const targetBytes = clampedMB * 1024 * 1024;
     const testQualities = [0.94, 0.92, 0.90, 0.88, 0.85, 0.82, 0.78];
     let selectedBlob = null;
     let selectedQuality = 0.94;
