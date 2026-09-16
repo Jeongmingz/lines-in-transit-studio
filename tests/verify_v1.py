@@ -18,25 +18,31 @@ def assert_true(condition, msg):
         print(f"[PASS] {msg}")
 
 def check_fonts():
+    license_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'LICENSE-OFL.txt')
+    f_archivo = os.path.join(BASE_DIR, 'assets', 'fonts', 'archivo-variable.woff2')
+    f_pretendard = os.path.join(BASE_DIR, 'assets', 'fonts', 'pretendard-variable.woff2')
+    f_ibm = os.path.join(BASE_DIR, 'assets', 'fonts', 'ibm-plex-mono-500.woff2')
+
+    assert_true(os.path.isfile(f_archivo), "archivo-variable.woff2 exists")
+    assert_true(os.path.isfile(f_pretendard), "pretendard-variable.woff2 exists")
+    assert_true(os.path.isfile(f_ibm), "ibm-plex-mono-500.woff2 exists")
+    assert_true(os.path.isfile(license_path), "LICENSE-OFL.txt exists")
+
+    # Verify Cormorant files are removed
     f600_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'cormorant-garamond-normal-600.woff2')
     f700_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'cormorant-garamond-normal-700.woff2')
     fi600_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'cormorant-garamond-italic-600.woff2')
-    license_path = os.path.join(BASE_DIR, 'assets', 'fonts', 'LICENSE-OFL.txt')
-
-    assert_true(os.path.isfile(f600_path), "cormorant-garamond-normal-600.woff2 exists")
-    assert_true(os.path.isfile(f700_path), "cormorant-garamond-normal-700.woff2 exists")
-    assert_true(os.path.isfile(fi600_path), "cormorant-garamond-italic-600.woff2 exists")
-    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'archivo-variable.woff2')), "archivo-variable.woff2 exists")
-    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'pretendard-variable.woff2')), "pretendard-variable.woff2 exists")
-    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'ibm-plex-mono-500.woff2')), "ibm-plex-mono-500.woff2 exists")
-    assert_true(os.path.isfile(license_path), "LICENSE-OFL.txt exists")
+    assert_true(not os.path.isfile(f600_path), "cormorant-garamond-normal-600.woff2 safely deleted")
+    assert_true(not os.path.isfile(f700_path), "cormorant-garamond-normal-700.woff2 safely deleted")
+    assert_true(not os.path.isfile(fi600_path), "cormorant-garamond-italic-600.woff2 safely deleted")
 
     license_txt = open(license_path, 'r', encoding='utf-8').read()
     assert_true("Archivo" in license_txt and "Pretendard" in license_txt, "OFL license includes Archivo and Pretendard")
 
-    h600 = hashlib.sha256(open(f600_path, 'rb').read()).hexdigest()
-    h700 = hashlib.sha256(open(f700_path, 'rb').read()).hexdigest()
-    assert_true(h600 != h700, f"Font weights 600 and 700 have distinct SHA256 hashes ({h600[:8]} vs {h700[:8]})")
+    # Check that index.html does NOT link to external font CDNs
+    index_html = open(os.path.join(BASE_DIR, 'index.html'), 'r', encoding='utf-8').read()
+    assert_true("fonts.googleapis.com" not in index_html, "External fonts.googleapis.com removed from index.html")
+    assert_true("fonts.gstatic.com" not in index_html, "External fonts.gstatic.com removed from index.html")
 
 
 def check_canvas_engine():

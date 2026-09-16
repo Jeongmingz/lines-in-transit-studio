@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lines in Transit — Journal Post Maker</title>
   <meta name="description" content="풍경, 공간, 여행 사진을 클린 포스트와 챕터 커버, 심리스 파노라마로 정리하는 개인 사진 스튜디오">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
   <link rel="stylesheet" href="css/style.css">
 
   <!-- Local Vendored JSZip & exifr for offline/reliable export & GPS analysis -->
@@ -169,14 +165,23 @@
           </div>
         </div>
 
-        <!-- 3. Journal Metadata -->
-        <div class="form-card">
-          <div class="card-title">
-            <span>저널 정보 기록</span>
+        <!-- 3. Journal Metadata & Caption (Mode-Adaptive) -->
+        <details id="journal-details" class="form-card" open>
+          <summary id="journal-summary" style="display: none; cursor: pointer; user-select: none; padding: 0.1rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 600; font-size: 0.76rem; color: var(--text-secondary);">⚙️ 파일명 · 캡션 옵션 (선택사항)</span>
+              <span style="font-size: 0.65rem; color: var(--text-muted);">미입력 시 자동 생성</span>
+            </div>
+          </summary>
+
+          <div id="journal-card-header" class="card-title" style="margin-top: 0.2rem; margin-bottom: 0.75rem;">
+            <span id="journal-card-title">저널 정보 기록</span>
+            <span id="journal-card-sub" style="font-size: 0.65rem; color: var(--text-muted);">표지 조판 텍스트</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 75px; gap: 0.5rem;">
-            <div class="form-group">
+          <!-- Series & No -->
+          <div id="group-series-no" style="display: grid; grid-template-columns: 1fr 75px; gap: 0.5rem; margin-bottom: 0.65rem;">
+            <div class="form-group" style="margin-bottom: 0;">
               <label>시리즈</label>
               <select id="select-series">
                 <option value="PASSING PLACES" selected>PASSING PLACES</option>
@@ -188,30 +193,32 @@
               </select>
               <input type="text" id="input-series-custom" style="display: none; margin-top: 0.35rem;" placeholder="시리즈명 직접 입력">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label>No.</label>
               <input type="text" id="input-issue" value="01">
             </div>
           </div>
 
-          <div class="form-group">
+          <!-- Photo Title (CHAPTER mode) -->
+          <div id="group-photo-title" class="form-group" style="margin-bottom: 0.65rem;">
             <label>사진 제목</label>
             <input type="text" id="input-title" value="KANAZAWA WATERWAY">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 95px; gap: 0.5rem;">
-            <div class="form-group">
+          <!-- Location & Date -->
+          <div id="group-location-date" style="display: grid; grid-template-columns: 1fr 95px; gap: 0.5rem; margin-bottom: 0.65rem;">
+            <div class="form-group" style="margin-bottom: 0;">
               <label>촬영 장소</label>
               <input type="text" id="input-location" value="KANAZAWA · JAPAN">
             </div>
-            <div class="form-group">
-              <label>촬영 연도/일시</label>
+            <div id="group-date" class="form-group" style="margin-bottom: 0;">
+              <label>촬영 연도</label>
               <input type="text" id="input-date" value="2026">
             </div>
           </div>
 
           <!-- GPS Metadata Card -->
-          <div id="gps-card" class="gps-card" style="display: none;">
+          <div id="gps-card" class="gps-card" style="display: none; margin-bottom: 0.65rem;">
             <div class="gps-card-header">
               <span class="gps-badge">🛰️ EXIF GPS 감지</span>
               <span id="gps-raw-coords" class="gps-coords-sub"></span>
@@ -235,35 +242,31 @@
             </div>
           </div>
 
-          <div id="gps-none-card" class="gps-none-card" style="display: none;">
+          <div id="gps-none-card" class="gps-none-card" style="display: none; margin-bottom: 0.65rem;">
             <span style="opacity: 0.7;">📍 위치 메타데이터 없음 (직접 입력 가능)</span>
           </div>
-        </div>
 
-        <!-- 4. Instagram Caption Helper -->
-        <div class="form-card">
-          <div class="card-title">
-            <span>인스타그램 캡션 복사</span>
-            <span style="font-size: 0.65rem; color: var(--text-muted);">현장 관찰 저널</span>
-          </div>
-          <div class="form-group">
+          <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.75rem 0;">
+
+          <!-- Observation Note & Caption Section -->
+          <div class="form-group" style="margin-bottom: 0.65rem;">
             <label>현장 관찰 기록</label>
             <textarea id="input-caption-note" rows="3" style="width: 100%; resize: vertical; font-size: 0.75rem; background: var(--bg-input); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 4px; padding: 0.4rem; font-family: inherit; line-height: 1.4;" placeholder="💡 힌트: 무엇이 걸음을 멈추게 했나요? 빛과 날씨는 어땠나요? 사진 속에서 가장 먼저 보길 바라는 것은 무엇인가요?"></textarea>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 0.65rem;">
             <label>촬영 장비 프리셋</label>
             <select id="select-preset">
               <!-- Dynamically populated from presets.js -->
             </select>
           </div>
-          <div class="form-group">
-            <label>캡션 메타데이터</label>
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <label>캡션 카메라 표기</label>
             <input type="text" id="input-camera-tag" value="FUJIFILM X-T30 II · CLASSIC CHROME SOOC">
           </div>
-          <button id="btn-copy-caption" class="btn-secondary btn-sm" type="button" style="width: 100%; margin-top: 0.25rem;">
+          <button id="btn-copy-caption" class="btn-secondary btn-sm" type="button" style="width: 100%;">
             📋 캡션 텍스트 클립보드 복사
           </button>
-        </div>
+        </details>
 
       </div>
 

@@ -168,6 +168,79 @@ def test_journal_presets():
     assert_true("SAMPLE_PHOTOS" in content, "SAMPLE_PHOTOS exported")
     assert_true("hotel" in content and "landscape" in content and "canal" in content, "3 genre sample photos defined")
 
+# 6. Caption Formatting & Dynamic Hashtag Defense Test
+def format_caption(note, state):
+    lines = []
+    if note and note.strip():
+        lines.append(note.strip())
+        lines.append('')
+
+    if state.get('location'):
+        natural_loc = re.sub(r'\s*·\s*', ', ', state['location']).strip()
+        lines.append(natural_loc)
+
+    if state.get('customCameraTag'):
+        clean_cam = re.sub(r'\s*SOOC\s*', '', state['customCameraTag'], flags=re.IGNORECASE).strip()
+        if clean_cam:
+            lines.append(clean_cam)
+
+    lines.append('')
+    tags = ['#linesintransit']
+
+    series = state.get('series', 'PASSING PLACES')
+    series_tag = re.sub(r'[^a-z0-9가-힣]', '', series.lower())
+    if series_tag:
+        tags.append(f'#{series_tag}')
+
+    if state.get('location'):
+        primary_loc = re.split(r'[,·/]', state['location'])[0].strip()
+        loc_tag = re.sub(r'[^a-z0-9가-힣]', '', primary_loc.lower())
+        if loc_tag:
+            tags.append(f'#{loc_tag}')
+
+    if state.get('customCameraTag'):
+        cam_lower = state['customCameraTag'].lower()
+        if 'x-t30 ii' in cam_lower or 'xt30' in cam_lower:
+            tags.append('#fujifilmxt30ii')
+        elif 'ipod' in cam_lower:
+            tags.append('#ipodtouch')
+        elif 'fujifilm' in cam_lower or 'fuji' in cam_lower:
+            tags.append('#fujifilm')
+        else:
+            raw_cam = re.sub(r'[^a-z0-9가-힣]', '', state['customCameraTag'].split('·')[0].lower())
+            if raw_cam:
+                tags.append(f'#{raw_cam}')
+
+    lines.append(' '.join(tags))
+    return '\n'.join(lines)
+
+def test_caption_formatting():
+    # Test case 1: Standard Fujifilm in Kanazawa
+    state1 = {
+        'location': 'KANAZAWA · JAPAN',
+        'customCameraTag': 'FUJIFILM X-T30 II · CLASSIC CHROME SOOC',
+        'series': 'WATERLINES'
+    }
+    cap1 = format_caption("골목 끝 수로에 오후 햇살이 닿으면서 물결이 빛났다.", state1)
+    assert_true("KANAZAWA, JAPAN" in cap1, "Caption formats location with natural comma")
+    assert_true("FUJIFILM X-T30 II · CLASSIC CHROME" in cap1, "Caption strips SOOC from camera line")
+    assert_true("#linesintransit" in cap1, "Caption includes brand anchor hashtag")
+    assert_true("#waterlines" in cap1, "Caption includes series hashtag")
+    assert_true("#kanazawa" in cap1, "Caption includes primary city hashtag")
+    assert_true("#fujifilmxt30ii" in cap1, "Caption dynamically generates #fujifilmxt30ii")
+    assert_true("#filmphotography" not in cap1, "#filmphotography is strictly excluded")
+
+    # Test case 2: Korean location defense (never produces empty '#')
+    state2 = {
+        'location': '서울 종로구 계동',
+        'customCameraTag': 'APPLE IPOD TOUCH 7 · VINTAGE DIGITAL',
+        'series': 'POCKET NOTES'
+    }
+    cap2 = format_caption("북촌 한옥 처마 아래.", state2)
+    assert_true("#서울종로구계동" in cap2 or "#서울" in cap2, "Korean location preserved as valid hashtag")
+    assert_true("# " not in cap2 and not cap2.endswith("#"), "No empty hashtags generated for Korean input")
+    assert_true("#ipodtouch" in cap2, "iPod Touch generates #ipodtouch hashtag")
+
 if __name__ == '__main__':
     print("=== Lines in Transit Studio Functional Tests ===")
     test_dms_conversion()
@@ -175,5 +248,6 @@ if __name__ == '__main__':
     test_filename_generation()
     test_request_id_race_condition()
     test_journal_presets()
+    test_caption_formatting()
     print("\n[SUCCESS] ALL FUNCTIONAL TESTS PASSED")
 

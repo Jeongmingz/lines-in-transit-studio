@@ -41,6 +41,7 @@ class App {
     this.initPresetsUI();
     this.initEventListeners();
     this.loadInitialImage();
+    window.__app_instance__ = this;
   }
 
   /**
@@ -521,32 +522,7 @@ class App {
         const noteInput = document.getElementById('input-caption-note');
         const note = noteInput ? noteInput.value.trim() : '';
 
-        const lines = [];
-        if (note) {
-          lines.push(note);
-          lines.push('');
-        }
-        lines.push('LINES IN TRANSIT');
-        const seriesName = this.state.series || 'PASSING PLACES';
-        const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
-        lines.push(`${seriesName} · NO. ${seriesNo}`);
-        if (this.state.photoTitle) {
-          lines.push(`Title: ${this.state.photoTitle}`);
-        }
-        if (this.state.location) {
-          lines.push(`Location: ${this.state.location}`);
-        }
-        if (this.state.captureDate) {
-          lines.push(`Date: ${this.state.captureDate}`);
-        }
-        if (this.state.customCameraTag) {
-          lines.push(`Camera: ${this.state.customCameraTag}`);
-        }
-        lines.push('');
-        const seriesTag = seriesName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        lines.push(`#linesintransit #${seriesTag} #photography #journal #filmphotography`);
-
-        const caption = lines.join('\n');
+        const caption = App.formatCaption(note, this.state);
         navigator.clipboard.writeText(caption).then(() => {
           this.showToast('인스타그램 저널 캡션이 복사되었습니다!');
         }).catch(() => {
@@ -720,7 +696,109 @@ class App {
       }
     }
 
+    // Mode-adaptive Journal Inputs visibility
+    const journalDetails = document.getElementById('journal-details');
+    const journalSummary = document.getElementById('journal-summary');
+    const journalCardHeader = document.getElementById('journal-card-header');
+    const journalCardTitle = document.getElementById('journal-card-title');
+    const journalCardSub = document.getElementById('journal-card-sub');
+    const groupSeriesNo = document.getElementById('group-series-no');
+    const groupPhotoTitle = document.getElementById('group-photo-title');
+    const groupLocationDate = document.getElementById('group-location-date');
+    const groupDate = document.getElementById('group-date');
+
+    if (mode === 'photo') {
+      if (journalDetails) journalDetails.open = false; // Collapsed by default for ultra-minimal 10s flow
+      if (journalSummary) journalSummary.style.display = 'block';
+      if (journalCardHeader) journalCardHeader.style.display = 'none';
+      if (groupPhotoTitle) groupPhotoTitle.style.display = 'none';
+      if (groupDate) groupDate.style.display = 'none';
+      if (groupSeriesNo) groupSeriesNo.style.display = 'grid';
+      if (groupLocationDate) groupLocationDate.style.display = 'block';
+    } else if (mode === 'chapter') {
+      if (journalDetails) journalDetails.open = true; // Always visible in chapter mode
+      if (journalSummary) journalSummary.style.display = 'none';
+      if (journalCardHeader) journalCardHeader.style.display = 'flex';
+      if (journalCardTitle) journalCardTitle.textContent = '저널 정보 기록 (표지 조판)';
+      if (journalCardSub) journalCardSub.textContent = '표지 텍스트';
+      if (groupPhotoTitle) groupPhotoTitle.style.display = 'block';
+      if (groupDate) groupDate.style.display = 'block';
+      if (groupSeriesNo) groupSeriesNo.style.display = 'grid';
+      if (groupLocationDate) groupLocationDate.style.display = 'grid';
+    } else { // 'panorama'
+      if (journalDetails) journalDetails.open = true; // Always visible in panorama mode
+      if (journalSummary) journalSummary.style.display = 'none';
+      if (journalCardHeader) journalCardHeader.style.display = 'flex';
+      if (journalCardTitle) journalCardTitle.textContent = '파노라마 정보 & 캡션';
+      if (journalCardSub) journalCardSub.textContent = '장소 메타데이터';
+      if (groupPhotoTitle) groupPhotoTitle.style.display = 'none';
+      if (groupSeriesNo) groupSeriesNo.style.display = 'none';
+      if (groupDate) groupDate.style.display = 'none';
+      if (groupLocationDate) groupLocationDate.style.display = 'block';
+    }
+
     this.updateFilenamePreview();
+  }
+
+  static formatCaption(note, state) {
+    const lines = [];
+    if (note && note.trim()) {
+      lines.push(note.trim());
+      lines.push('');
+    }
+
+    // Natural location display (e.g. "Kanazawa, Japan" or "서울 종로구")
+    if (state.location) {
+      const naturalLoc = state.location.replace(/\s*·\s*/g, ', ').trim();
+      lines.push(naturalLoc);
+    }
+
+    // Camera and preset display without raw SOOC keyword
+    if (state.customCameraTag) {
+      const cleanCam = state.customCameraTag.replace(/\s*SOOC\s*/gi, '').trim();
+      if (cleanCam) {
+        lines.push(cleanCam);
+      }
+    }
+
+    lines.push('');
+
+    // Dynamic hashtags
+    const tags = ['#linesintransit'];
+
+    // Series hashtag
+    const series = state.series || 'PASSING PLACES';
+    const seriesTag = series.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+    if (seriesTag) {
+      tags.push(`#${seriesTag}`);
+    }
+
+    // Location hashtag (supports Korean e.g. #카나자와, #서울 and English #kanazawa without empty #)
+    if (state.location) {
+      const primaryLoc = state.location.split(/[,·/]/)[0].trim();
+      const locTag = primaryLoc.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+      if (locTag) {
+        tags.push(`#${locTag}`);
+      }
+    }
+
+    // Camera model hashtag: extract specific model e.g. FUJIFILM X-T30 II -> #fujifilmxt30ii
+    if (state.customCameraTag) {
+      const camLower = state.customCameraTag.toLowerCase();
+      if (camLower.includes('x-t30 ii') || camLower.includes('xt30')) {
+        tags.push('#fujifilmxt30ii');
+      } else if (camLower.includes('ipod')) {
+        tags.push('#ipodtouch');
+      } else if (camLower.includes('fujifilm') || camLower.includes('fuji')) {
+        tags.push('#fujifilm');
+      } else {
+        const rawCam = state.customCameraTag.split('·')[0].toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+        if (rawCam) tags.push(`#${rawCam}`);
+      }
+    }
+
+    lines.push(tags.join(' '));
+    return lines.join('\n');
   }
 
   updateFilenamePreview() {

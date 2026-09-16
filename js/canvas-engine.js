@@ -188,7 +188,10 @@ export class CanvasEngine {
       cleanCanvas.width = 1080;
       cleanCanvas.height = 1350;
       const clctx = cleanCanvas.getContext('2d');
-      this.renderPhoto(clctx, image, state);
+      this.renderPhoto(clctx, image, {
+        ...state,
+        photoFitMode: 'cover'
+      });
 
       return {
         canvas: coverCanvas,
