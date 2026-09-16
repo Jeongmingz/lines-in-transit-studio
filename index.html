@@ -113,7 +113,7 @@
           <div class="mode-selector">
             <button class="mode-btn active" data-mode="vertical">
               <div>📐 세로 4:5</div>
-              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">매거진 커버</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">포트폴리오 &amp; 챕터</div>
             </button>
             <button class="mode-btn" data-mode="seamless">
               <div>🌊 심리스</div>
@@ -140,62 +140,57 @@
           </div>
 
           <!-- Sample Photo Quick Pills -->
-          <div style="margin-top: 0.85rem;">
-            <label style="font-size: 0.7rem;">빠른 샘플 테스트</label>
-            <div style="display: flex; gap: 0.4rem; margin-top: 0.35rem;">
-              <button class="btn-secondary sample-btn" data-sample="hotel" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">호텔 파사드</button>
-              <button class="btn-secondary sample-btn" data-sample="canal" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">운하 파노라마</button>
-              <button class="btn-secondary sample-btn" data-sample="street" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">거리 신호등</button>
+          <div style="margin-top: 0.65rem;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem;">샘플 사진 테스트:</div>
+            <div style="display: flex; gap: 0.4rem;">
+              <button id="btn-sample-1" class="btn-secondary btn-sm" style="flex: 1;">
+                🏨 샘플 1 (도쿄 세로)
+              </button>
+              <button id="btn-sample-2" class="btn-secondary btn-sm" style="flex: 1;">
+                🌊 샘플 2 (가나자와 수로)
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- 3. Typography & Information -->
+        <!-- 3. Typography & Magazine Metadata -->
         <div class="form-card">
           <div class="card-title">
             <span>매거진 정보 표기</span>
+            <span id="badge-typography" class="badge-typography">1순위 권장</span>
           </div>
 
           <!-- Typography Preset Dropdown -->
-          <div class="form-group" style="margin-bottom: 0.85rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-              <label for="select-typography" style="margin: 0; font-weight: 600;">타이포그래피 프리셋</label>
-              <span id="badge-typography" class="badge-typography">1순위 권장</span>
-            </div>
-            <select id="select-typography" class="form-select" aria-label="타이포그래피 프리셋 선택">
-              <option value="archivo" selected>1. Archivo + Pretendard (도시 &amp; 건축 모더니즘 · 권장)</option>
-              <option value="instrument">2. Instrument Serif + 마루 부리 (컨템포러리 에디토리얼)</option>
-              <option value="ibm-plex">3. IBM Plex Sans + KR (교통 시스템 &amp; 아카이브)</option>
+          <div class="form-group">
+            <label>타이포그래피 프리셋</label>
+            <select id="select-typography">
+              <option value="archivo" selected>1순위: Archivo + Pretendard (도시·건축 권장)</option>
+              <option value="instrument">2순위: Instrument Serif + 마루 부리 (컨템포러리 세리프)</option>
+              <option value="ibm-plex">3순위: IBM Plex Sans + KR (공공 표지판·아카이브)</option>
             </select>
           </div>
 
-          <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.6rem;">
-
+          <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.5rem;">
             <div class="form-group">
-              <label>이슈 No.</label>
-              <input type="text" id="input-issue" value="01" maxlength="4">
+              <label>이슈 / 번호</label>
+              <input type="text" id="input-issue" value="01">
             </div>
             <div class="form-group">
-              <label>작품/건축물 이름</label>
+              <label>작품 / 건축물 제목</label>
               <input type="text" id="input-title" value="BASE LAYER HOTEL">
             </div>
           </div>
+
           <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-              <label style="margin: 0;">도시 및 좌표 / 장소</label>
-              <span id="gps-indicator" class="gps-indicator" style="display: none;">
-                <span class="gps-dot"></span>
-                <span id="gps-indicator-text">GPS 감지됨</span>
-              </span>
-            </div>
-            <input type="text" id="input-location" value="35°40'N · Tokyo City Center">
+            <label>촬영 장소</label>
+            <input type="text" id="input-location" value="TOKYO · SHIBUYA">
           </div>
 
-          <!-- GPS Metadata & Reverse Geocoding Card -->
+          <!-- GPS Metadata Card -->
           <div id="gps-card" class="gps-card" style="display: none;">
-            <div class="gps-card-top">
-              <span class="gps-badge">📍 GPS 감지</span>
-              <span id="gps-coords-text" class="gps-coords-text">35.6762, 139.6503</span>
+            <div class="gps-card-header">
+              <span class="gps-badge">🛰️ EXIF GPS 감지</span>
+              <span id="gps-raw-coords" class="gps-coords-sub"></span>
             </div>
             <div id="gps-dms-text" class="gps-dms-text">35°40′34″N · 139°39′01″E</div>
             <div class="gps-card-actions">
@@ -230,7 +225,11 @@
         <div class="form-card">
           <div class="card-title">
             <span>인스타그램 캡션 복사</span>
-            <span style="font-size: 0.65rem; color: var(--text-muted);">장비 및 촬영 정보</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">에디토리얼 포스트</span>
+          </div>
+          <div class="form-group">
+            <label>현장 관찰 기록 (왜 이 순간 셔터를 눌렀는가?)</label>
+            <textarea id="input-caption-note" rows="2" style="width: 100%; resize: vertical; font-size: 0.75rem; background: var(--bg-input); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 4px; padding: 0.4rem; font-family: inherit;" placeholder="예: 호텔 창들이 정렬되어 있었지만, 택시 한 대가 들어오는 순간 사진의 균형이 완성됐다."></textarea>
           </div>
           <div class="form-group">
             <label>촬영 장비 프리셋</label>
@@ -344,29 +343,83 @@
       <!-- Tab 3: Guide Panel -->
       <div id="tab-guide" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-guide" style="display: none;">
         
+        <!-- 1. Positioning & 70:20:10 Ratio -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>브랜드 원칙: 70 · 20 · 10</span>
+          </div>
+          <div style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.5rem;">
+            <strong style="color: var(--accent-gold);">70% 사진가 · 20% 도시 기록자 · 10% 디자인 브랜드</strong><br>
+            매 게시물에 표지를 반복하면 '디자인 계정'으로 오인됩니다. 커버는 시리즈의 챕터 개막에만 사용하세요.
+          </div>
+          <ul style="font-size: 0.73rem; color: var(--text-muted); line-height: 1.6; padding-left: 1rem; margin: 0;">
+            <li><strong>클린 캐러셀 (50%)</strong>: 1번 장 순수 사진으로 포트폴리오 증명</li>
+            <li><strong>촬영 과정 릴스 (25%)</strong>: 7~15초 현장 영상으로 비팔로워 탐색 유입</li>
+            <li><strong>매거진 챕터 (15%)</strong>: 새로운 도시·공간 개막 시 커버 활용</li>
+            <li><strong>iPod Pocket City (10%)</strong>: 후지 vs 아이팟 시선 비교 토론</li>
+          </ul>
+        </div>
+
+        <!-- 2. Carousel Strategy -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>캐러셀 2가지 트랙</span>
+          </div>
+          <div style="margin-bottom: 0.6rem;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">① 일반 포트폴리오 (가장 기본)</div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
+              [1] 가장 강한 클린 사진 ➔ [2] 다른 앵글 ➔ [3] 건축 디테일 ➔ [4] 사람/이동의 흔적 ➔ [5] 한 줄 관찰 기록
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">② 매거진 챕터 게시물 (시리즈 개막)</div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
+              [1] LINES IN TRANSIT 커버 ➔ [2] 클린 원본 ➔ [3] 디테일 ➔ [4] 주변 환경 ➔ [5] 총평
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Pinned 3 Posts & Captions -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>프로필 5초 법칙 &amp; 상단 고정 3선</span>
+          </div>
+          <ol style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5; padding-left: 1.1rem; margin-bottom: 0.6rem;">
+            <li><strong>고정 1 (매니페스토)</strong>: 작가의 관점과 도시 아카이브 기준</li>
+            <li><strong>고정 2 (포트폴리오)</strong>: 가장 완성도 높은 클린 사진 5선</li>
+            <li><strong>고정 3 (대표 챕터)</strong>: 대표 도시 또는 호텔 프로젝트 시리즈</li>
+          </ol>
+          <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+            💡 <strong>캡션 작성 팁</strong>: 시적인 미사여구보다 <em>"호텔 창들이 정렬되어 있었지만, 택시 한 대가 들어오는 순간 균형이 완성됐다"</em>처럼 <strong>왜 그 순간 셔터를 눌렀는지 보여주는 구체적 관찰</strong>이 훨씬 강력합니다.
+          </div>
+        </div>
+
+        <!-- 4. Spatial Collaboration Package -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>호텔·공간 협찬: 5~8장 에디토리얼</span>
+          </div>
+          <div style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5;">
+            호텔/공간 클라이언트는 단 한 장이 아닌 <strong>공간을 완성하는 에디토리얼 패키지</strong>를 원합니다:
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.35rem;">
+            • 건물 전경(Facade) &amp; 진입부(Threshold)<br>
+            • 가구/조명/자재 디테일 &amp; 인물의 자연스러운 스케일<br>
+            • 아침/저녁 시간대 채광 &amp; 7~15초 세로 릴스<br>
+            • 클라이언트가 마케팅에 재사용 가능한 고해상도 클린 이미지
+          </div>
+        </div>
+
+        <!-- 5. App Setting -->
         <div class="form-card">
           <div class="card-title">
             <span>인스타그램 공식 고화질 세팅</span>
           </div>
-          <ul style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.1rem;">
+          <ul style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5; padding-left: 1.1rem; margin: 0;">
             <li>인스타그램 앱 실행 ➔ <strong>프로필</strong> ➔ 우측 상단 <strong>메뉴 (≡)</strong></li>
             <li><strong>설정 및 개인정보</strong> ➔ <strong>미디어 품질</strong></li>
-            <li><strong style="color: var(--accent-gold);">"가장 높은 화질로 업로드"</strong> 토글 <strong>ON</strong> 권장</li>
+            <li><strong style="color: var(--accent-gold);">"가장 높은 화질로 업로드"</strong> 토글 <strong>ON</strong></li>
           </ul>
-        </div>
-
-        <div class="form-card">
-          <div class="card-title">
-            <span>추천 3-Slide 캐러셀 구성</span>
-          </div>
-          <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.6rem;">
-            모바일 피드에서 높은 완독률을 유도하는 캐러셀 구성:
-          </p>
-          <ol style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.1rem;">
-            <li><strong>1번 장</strong>: 스튜디오에서 생성한 <strong>매거진 커버</strong> (시선 집중)</li>
-            <li><strong>2번 장</strong>: 텍스트가 없는 <strong>순수 원본 사진</strong> (감상용)</li>
-            <li><strong>3번 장</strong>: 세부 줌인 디테일 또는 <strong>아이팟 촬영 비하인드</strong></li>
-          </ol>
         </div>
 
       </div>

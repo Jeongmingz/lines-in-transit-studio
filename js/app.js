@@ -420,15 +420,26 @@ class App {
     const btnCopyCaption = document.getElementById('btn-copy-caption');
     if (btnCopyCaption) {
       btnCopyCaption.addEventListener('click', () => {
-        const lines = [
-          this.state.magazineTitle || 'LINES IN TRANSIT',
-          `ISSUE ${this.state.issueNo || '01'} — ${this.state.photoTitle || ''}`,
-          `📍 ${this.state.location || ''}`,
-          `📷 ${this.state.customCameraTag || ''}`,
-          '',
-          '#linesintransit #fujifilm #streetphotography #architecture #urbanphotography'
-        ];
-        const caption = lines.filter(Boolean).join('\n');
+        const noteInput = document.getElementById('input-caption-note');
+        const note = noteInput ? noteInput.value.trim() : '';
+
+        const lines = [];
+        if (note) {
+          lines.push(note);
+          lines.push('');
+        }
+        lines.push(this.state.magazineTitle || 'LINES IN TRANSIT');
+        lines.push(`${this.state.photoTitle || 'UNTITLED'}` + (this.state.issueNo ? ` · ISSUE ${this.state.issueNo}` : ''));
+        if (this.state.location) {
+          lines.push(`📍 ${this.state.location}`);
+        }
+        if (this.state.customCameraTag) {
+          lines.push(`📷 ${this.state.customCameraTag}`);
+        }
+        lines.push('');
+        lines.push('#linesintransit #streetphotography #fujifilm #architecture #urbanarchive');
+
+        const caption = lines.join('\n');
         navigator.clipboard.writeText(caption).then(() => {
           this.showToast('인스타그램 캡션이 클립보드에 복사되었습니다!');
         }).catch(() => {

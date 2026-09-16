@@ -185,11 +185,13 @@ def run_tests():
             preview_recheck = page.locator("#filename-preview").inner_text()
             assert_true("외 1장 (클린 사진)" in preview_recheck, "Re-checking clean photo restores '외 1장 (클린 사진)' to preview")
 
-            # Test 8: Instagram Caption copy button is clickable in Studio tab
+            # Test 8: Instagram Caption copy button & observation note are in Studio tab
             page.click("#tab-btn-studio")
             page.wait_for_timeout(200)
             caption_btn = page.locator("#btn-copy-caption")
+            note_textarea = page.locator("#input-caption-note")
             assert_true(caption_btn.is_visible(), "Instagram caption copy button is visible in Studio tab")
+            assert_true(note_textarea.is_visible(), "Instagram caption observation note textarea is visible in Studio tab")
 
             browser.close()
             print("\n[SUCCESS] ALL REAL BROWSER TESTS PASSED")

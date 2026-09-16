@@ -79,6 +79,7 @@ def check_html_and_css():
     assert_true('id="select-typography"' in html_content, "Typography preset dropdown present in index.html")
     assert_true('id="chk-include-clean"' in html_content, "Clean photo toggle checkbox present in index.html")
     assert_true('id="btn-copy-caption"' in html_content, "Instagram caption copy button present in index.html")
+    assert_true('id="input-caption-note"' in html_content, "Observation note textarea present in index.html")
 
     assert_true(".cut-badge" in css_content and "top: 8px" in css_content, "Cut badge pinned to top in CSS")
     assert_true(".guide-slide-box.slide-1" in css_content, "Slide 1 safe area CSS rule present")
