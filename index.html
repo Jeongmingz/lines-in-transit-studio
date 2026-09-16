@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lines in Transit Studio — Instagram Photography Generator</title>
   <meta name="description" content="후지필름 X-T30 II & 아이팟 터치 사진을 4:5 매거진 커버와 심리스 파노라마로 10초 만에 제작하는 웹 스튜디오">
   <link rel="stylesheet" href="css/style.css">
@@ -31,18 +31,36 @@
     <!-- Left: Preview Canvas Pane -->
     <main class="preview-pane">
       <div id="canvas-container" class="canvas-wrapper">
-        <canvas id="main-canvas"></canvas>
+        <div class="canvas-stage">
+          <canvas id="main-canvas"></canvas>
+          <!-- Pure CSS Safety Guide Overlay (Never affects exported canvas pixels) -->
+          <div id="canvas-overlay" class="canvas-overlay">
+            <div class="guide-box"></div>
+            <div class="guide-axis-v"></div>
+            <div class="guide-axis-h"></div>
+            <div class="guide-cut-seam">
+              <span class="cut-badge">CUT SEAM</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Floating Canvas Toolbar -->
       <div class="canvas-toolbar">
-        <button id="btn-reset-view" class="btn-icon" title="구도 및 줌 리셋">
+        <button id="btn-reset-view" class="btn-icon" title="구도 및 줌 리셋" aria-label="구도 및 줌 리셋">
           ↺ 리셋
         </button>
         <span style="color: var(--border-subtle)">|</span>
+        <div class="zoom-controls">
+          <button id="btn-zoom-out" class="zoom-btn" title="축소" aria-label="사진 축소">−</button>
+          <input type="range" id="zoom-slider" class="zoom-slider" min="1.0" max="3.0" step="0.05" value="1.0" aria-label="사진 확대 축소 배율">
+          <button id="btn-zoom-in" class="zoom-btn" title="확대" aria-label="사진 확대">+</button>
+          <span id="zoom-val-badge" class="zoom-val">1.0x</span>
+        </div>
+        <span style="color: var(--border-subtle)">|</span>
         <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin: 0; font-size: 0.75rem;">
           <input type="checkbox" id="chk-safety" style="accent-color: var(--accent-blue);">
-          <span>안전영역 가이드</span>
+          <span>안전 가이드</span>
         </label>
         <span style="color: var(--border-subtle)">|</span>
         <div id="live-info" style="font-size: 0.72rem; color: var(--text-primary);">
@@ -55,10 +73,10 @@
     <aside class="control-sidebar">
       
       <!-- Tabs -->
-      <div class="sidebar-tabs">
-        <button class="tab-btn active" data-tab="tab-studio">스튜디오</button>
-        <button class="tab-btn" data-tab="tab-export">내보내기</button>
-        <button class="tab-btn" data-tab="tab-guide">인스타 팁</button>
+      <div class="sidebar-tabs" role="tablist">
+        <button class="tab-btn active" role="tab" id="tab-btn-studio" aria-selected="true" aria-controls="tab-studio" data-tab="tab-studio">스튜디오</button>
+        <button class="tab-btn" role="tab" id="tab-btn-export" aria-selected="false" aria-controls="tab-export" data-tab="tab-export">내보내기</button>
+        <button class="tab-btn" role="tab" id="tab-btn-guide" aria-selected="false" aria-controls="tab-guide" data-tab="tab-guide">인스타 팁</button>
       </div>
 
       <!-- Tab 1: Studio Panel -->
@@ -91,7 +109,7 @@
             <span>사진 불러오기</span>
             <span style="font-size: 0.65rem; color: var(--text-muted);">JPEG / PNG 지원</span>
           </div>
-          <div id="dropzone" class="dropzone">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="사진 업로드: 사진 파일을 드래그하거나 엔터 키를 눌러 선택하세요">
             <div class="dropzone-icon">📷</div>
             <div class="dropzone-text">사진을 드래그하거나 클릭하여 업로드</div>
             <div class="dropzone-sub">※ 아이폰 HEIC 또는 카메라 RAW는 JPEG 변환 후 권장</div>
@@ -163,14 +181,26 @@
           <div class="form-group">
             <label>압축 모드</label>
             <select id="select-quality-mode">
-              <option value="auto">자동 용량 최적화 (권장 밸런스: ~1.4MB 타깃)</option>
+              <option value="auto">가변 품질 자동 감축 (목표 용량 맞춤)</option>
               <option value="high">고화질 모드 (JPEG 0.95)</option>
               <option value="normal">일반 최적화 (JPEG 0.92)</option>
               <option value="png">무손실 원본 (PNG)</option>
             </select>
           </div>
+          <div id="target-mb-group" class="form-group">
+            <label>자동 감축 목표 용량</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="select-target-mb" style="flex: 1;">
+                <option value="1.0">1.0 MB (모바일 고속 전송 안전선)</option>
+                <option value="1.4" selected>1.4 MB (화질·용량 권장 밸런스)</option>
+                <option value="2.0">2.0 MB (디테일 우선)</option>
+                <option value="custom">직접 지정...</option>
+              </select>
+              <input type="number" id="input-target-mb" value="1.4" min="0.5" max="5.0" step="0.1" style="width: 80px; display: none;" aria-label="목표 용량 MB 직접 입력">
+            </div>
+          </div>
           <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
-            💡 <strong>자동 용량 최적화</strong>는 캔버스 렌더링 후 Blob 용량을 확인하여, 전송 편의성과 화질의 균형을 위해 품질을 단계적으로 미세 조정합니다. (특정 플랫폼의 공식 기준이 아닌 앱 내부 최적화 알고리즘입니다.)
+            💡 <strong>가변 품질 자동 감축</strong>은 렌더링 후 Blob 용량을 확인하여, 목표 용량(기본 1.4MB)을 초과할 경우 품질을 0.94에서 단계적으로 미세 조정합니다. (전송 편의와 화질의 균형을 위한 앱 내부 최적화 기준입니다.)
           </div>
         </div>
 
@@ -250,7 +280,7 @@
   </div>
 
   <!-- Toast Message -->
-  <div id="toast">알림 메시지</div>
+  <div id="toast" role="status" aria-live="polite">알림 메시지</div>
 
   <script type="module" src="js/app.js"></script>
 </body>

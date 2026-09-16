@@ -45,8 +45,8 @@ export class ExportEngine {
 
     // 'auto' Adaptive Quality Mode:
     // Starts at 0.94, drops iteratively if exceeds target size (default 1.4MB)
-    const targetBytes = targetMB * 1024 * 1024;
-    const testQualities = [0.94, 0.92, 0.90, 0.88, 0.85];
+    const targetBytes = (parseFloat(targetMB) || 1.4) * 1024 * 1024;
+    const testQualities = [0.94, 0.92, 0.90, 0.88, 0.85, 0.82, 0.78];
     let selectedBlob = null;
     let selectedQuality = 0.94;
 
@@ -64,7 +64,8 @@ export class ExportEngine {
       format: 'JPEG',
       quality: selectedQuality,
       bytes: selectedBlob.size,
-      sizeFormatted: this.formatBytes(selectedBlob.size)
+      sizeFormatted: this.formatBytes(selectedBlob.size),
+      qualityWarning: selectedQuality < 0.80
     };
   }
 

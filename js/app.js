@@ -1,5 +1,7 @@
 /**
  * Lines in Transit Studio - Main Application Controller
+ * Optimized for mobile touch, pinch zoom, requestAnimationFrame render loop,
+ * decoupled CSS guides, and reliable client-side export.
  */
 
 import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE } from './presets.js';
@@ -12,13 +14,15 @@ class App {
     this.state = this.loadState();
     this.canvasEngine = new CanvasEngine();
     this.currentImage = null;
-    this.lastRenderResult = null;
+    this.rafPending = false;
 
     // DOM Elements
     this.mainCanvas = document.getElementById('main-canvas');
     this.canvasWrapper = document.getElementById('canvas-container');
     this.liveInfo = document.getElementById('live-info');
     this.filenamePreview = document.getElementById('filename-preview');
+    this.zoomSlider = document.getElementById('zoom-slider');
+    this.zoomBadge = document.getElementById('zoom-val-badge');
 
     this.initPresetsUI();
     this.initEventListeners();
@@ -34,7 +38,6 @@ class App {
       const saved = localStorage.getItem('lit_studio_state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Exclude any binary or unexpected data
         delete parsed.image;
         delete parsed.imageData;
         return { ...DEFAULT_STATE, ...parsed };
@@ -47,7 +50,6 @@ class App {
 
   saveState() {
     try {
-      // Whitelist only lightweight metadata
       const cleanState = {
         mode: this.state.mode,
         magazineTitle: this.state.magazineTitle,
@@ -91,16 +93,67 @@ class App {
     document.getElementById('chk-safety').checked = this.state.showSafetyGuide;
     document.getElementById('select-quality-mode').value = this.state.exportQualityMode;
 
+    // Target MB selection
+    const targetMbSelect = document.getElementById('select-target-mb');
+    const targetMbInput = document.getElementById('input-target-mb');
+    const currentMB = String(this.state.autoFitTargetMB || 1.4);
+    if (['1.0', '1.4', '2.0'].includes(currentMB)) {
+      if (targetMbSelect) targetMbSelect.value = currentMB;
+      if (targetMbInput) targetMbInput.style.display = 'none';
+    } else {
+      if (targetMbSelect) targetMbSelect.value = 'custom';
+      if (targetMbInput) {
+        targetMbInput.value = currentMB;
+        targetMbInput.style.display = 'block';
+      }
+    }
+
+    this.syncGuideUI();
+    this.syncZoomUI();
     this.updateModeUI(this.state.mode);
   }
 
+  syncGuideUI() {
+    if (this.state.showSafetyGuide) {
+      this.canvasWrapper.classList.add('show-guides');
+    } else {
+      this.canvasWrapper.classList.remove('show-guides');
+    }
+  }
+
+  syncZoomUI() {
+    if (this.zoomSlider) this.zoomSlider.value = this.state.zoom.toFixed(2);
+    if (this.zoomBadge) this.zoomBadge.textContent = `${this.state.zoom.toFixed(1)}x`;
+  }
+
+  setZoom(newZoom) {
+    this.state.zoom = Math.max(1.0, Math.min(3.0, parseFloat(newZoom)));
+    this.syncZoomUI();
+    this.saveState();
+    this.scheduleRender();
+  }
+
+  scheduleRender() {
+    if (this.rafPending) return;
+    this.rafPending = true;
+    requestAnimationFrame(async () => {
+      this.rafPending = false;
+      await this.render();
+    });
+  }
+
   initEventListeners() {
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    // Tab switching with Accessibility
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        tabButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
         document.querySelectorAll('.panel-content').forEach(p => p.style.display = 'none');
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
         const targetPanel = document.getElementById(btn.dataset.tab);
         if (targetPanel) targetPanel.style.display = 'flex';
       });
@@ -118,6 +171,13 @@ class App {
     const fileInput = document.getElementById('file-input');
 
     dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
       dropzone.classList.add('dragover');
@@ -151,7 +211,7 @@ class App {
         this.state[prop] = e.target.value;
         this.saveState();
         this.updateFilenamePreview();
-        this.render();
+        this.scheduleRender();
       });
     };
 
@@ -170,32 +230,81 @@ class App {
         document.getElementById('input-camera-tag').value = preset.label;
       }
       this.saveState();
-      this.render();
+      this.scheduleRender();
     });
 
-    // Safety guide toggle
+    // Safety guide toggle (Pure CSS overlay toggle)
     document.getElementById('chk-safety').addEventListener('change', (e) => {
       this.state.showSafetyGuide = e.target.checked;
-      this.render();
+      this.syncGuideUI();
+      this.saveState();
     });
+
+    // Zoom Controls
+    if (this.zoomSlider) {
+      this.zoomSlider.addEventListener('input', (e) => {
+        this.setZoom(e.target.value);
+      });
+    }
+
+    const btnZoomIn = document.getElementById('btn-zoom-in');
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', () => {
+        this.setZoom(this.state.zoom + 0.1);
+      });
+    }
+
+    const btnZoomOut = document.getElementById('btn-zoom-out');
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', () => {
+        this.setZoom(this.state.zoom - 0.1);
+      });
+    }
 
     // Reset view
     document.getElementById('btn-reset-view').addEventListener('click', () => {
       this.state.zoom = 1.0;
       this.state.panX = 0;
       this.state.panY = 0;
-      this.render();
+      this.syncZoomUI();
+      this.saveState();
+      this.scheduleRender();
       this.showToast('구도와 줌이 초기화되었습니다.');
     });
 
-    // Canvas Pan & Zoom Interaction
+    // Canvas Pan & Pinch Zoom Interactions
     this.setupCanvasInteractions();
 
     // Export Controls
     document.getElementById('select-quality-mode').addEventListener('change', (e) => {
       this.state.exportQualityMode = e.target.value;
+      const targetMbGroup = document.getElementById('target-mb-group');
+      if (targetMbGroup) {
+        targetMbGroup.style.display = (e.target.value === 'auto') ? 'block' : 'none';
+      }
       this.saveState();
+      this.updateFilenamePreview();
     });
+
+    const targetMbSelect = document.getElementById('select-target-mb');
+    const targetMbInput = document.getElementById('input-target-mb');
+    if (targetMbSelect && targetMbInput) {
+      targetMbSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+          targetMbInput.style.display = 'block';
+          this.state.autoFitTargetMB = parseFloat(targetMbInput.value) || 1.4;
+        } else {
+          targetMbInput.style.display = 'none';
+          this.state.autoFitTargetMB = parseFloat(e.target.value);
+        }
+        this.saveState();
+      });
+
+      targetMbInput.addEventListener('input', (e) => {
+        this.state.autoFitTargetMB = parseFloat(e.target.value) || 1.4;
+        this.saveState();
+      });
+    }
 
     document.getElementById('btn-download-single').addEventListener('click', () => this.exportSingle());
     document.getElementById('btn-download-s1').addEventListener('click', () => this.exportSeamlessSlide(1));
@@ -206,8 +315,11 @@ class App {
 
   setupCanvasInteractions() {
     let isDragging = false;
+    let isPinching = false;
     let startX = 0, startY = 0;
     let initialPanX = 0, initialPanY = 0;
+    let initialPinchDist = 0;
+    let initialPinchZoom = 1.0;
 
     const onStart = (clientX, clientY) => {
       isDragging = true;
@@ -222,42 +334,69 @@ class App {
       const dx = clientX - startX;
       const dy = clientY - startY;
 
-      // Sensitivity factor
       const factor = 0.003 / this.state.zoom;
       this.state.panX = Math.max(-1, Math.min(1, initialPanX - dx * factor));
       this.state.panY = Math.max(-1, Math.min(1, initialPanY - dy * factor));
-      this.render();
+      this.scheduleRender();
     };
 
     const onEnd = () => {
       isDragging = false;
+      isPinching = false;
+      this.saveState();
     };
 
+    // Mouse drag
     this.canvasWrapper.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
     window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
     window.addEventListener('mouseup', onEnd);
 
-    // Touch support for mobile
+    // Touch events with 2-finger Pinch-to-Zoom
     this.canvasWrapper.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
+      if (e.touches.length === 2) {
+        isPinching = true;
+        isDragging = false;
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialPinchZoom = this.state.zoom;
+      } else if (e.touches.length === 1) {
+        isPinching = false;
         onStart(e.touches[0].clientX, e.touches[0].clientY);
       }
-    }, { passive: true });
+    }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 1) {
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (initialPinchDist > 0) {
+          const scale = currentDist / initialPinchDist;
+          this.setZoom(Math.max(1.0, Math.min(3.0, initialPinchZoom * scale)));
+        }
+      } else if (!isPinching && e.touches.length === 1 && isDragging) {
         onMove(e.touches[0].clientX, e.touches[0].clientY);
       }
-    }, { passive: true });
+    }, { passive: false });
 
-    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        isPinching = false;
+      }
+      if (e.touches.length === 0) {
+        onEnd();
+      }
+    });
 
     // Wheel to Zoom
     this.canvasWrapper.addEventListener('wheel', (e) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.08 : 0.08;
-      this.state.zoom = Math.max(1.0, Math.min(3.0, this.state.zoom + delta));
-      this.render();
+      this.setZoom(this.state.zoom + delta);
     }, { passive: false });
   }
 
@@ -266,9 +405,10 @@ class App {
     this.state.panX = 0;
     this.state.panY = 0;
     this.state.zoom = 1.0;
+    this.syncZoomUI();
     this.updateModeUI(mode);
     this.saveState();
-    this.render();
+    this.scheduleRender();
   }
 
   updateModeUI(mode) {
@@ -277,6 +417,12 @@ class App {
     });
 
     const isSeamless = (mode === 'seamless');
+    if (isSeamless) {
+      this.canvasWrapper.classList.add('mode-seamless');
+    } else {
+      this.canvasWrapper.classList.remove('mode-seamless');
+    }
+
     document.getElementById('export-single-section').style.display = isSeamless ? 'none' : 'block';
     document.getElementById('export-seamless-section').style.display = isSeamless ? 'block' : 'none';
 
@@ -298,7 +444,8 @@ class App {
       this.state.panX = 0;
       this.state.panY = 0;
       this.state.zoom = 1.0;
-      this.render();
+      this.syncZoomUI();
+      this.scheduleRender();
       this.showToast('사진이 로드되었습니다.');
     } catch (err) {
       alert(err.message);
@@ -323,7 +470,7 @@ class App {
       }
 
       this.initPresetsUI();
-      this.render();
+      this.scheduleRender();
       this.showToast(`샘플 '${sample.name}' 적용 완료`);
     } catch (err) {
       console.warn('Sample load error:', err);
@@ -334,17 +481,12 @@ class App {
     this.loadSample(SAMPLE_PHOTOS[0]);
   }
 
+  /**
+   * Fast preview rendering directly into mainCanvas
+   */
   async render() {
-    this.lastRenderResult = await this.canvasEngine.render(this.currentImage, this.state);
-    
-    // Copy result to preview canvas
-    this.mainCanvas.width = this.lastRenderResult.canvas.width;
-    this.mainCanvas.height = this.lastRenderResult.canvas.height;
-    const ctx = this.mainCanvas.getContext('2d');
-    ctx.clearRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
-    ctx.drawImage(this.lastRenderResult.canvas, 0, 0);
+    await this.canvasEngine.renderToCanvas(this.mainCanvas, this.currentImage, this.state);
 
-    // Update live resolution label
     if (this.state.mode === 'seamless') {
       this.liveInfo.textContent = '2160 × 1350 px (2-Slide 심리스)';
     } else {
@@ -352,12 +494,19 @@ class App {
     }
   }
 
+  /**
+   * Generate dedicated export master artifacts on-demand
+   */
+  async getExportArtifacts() {
+    return await this.canvasEngine.renderExport(this.currentImage, this.state);
+  }
+
   async exportSingle() {
-    if (!this.lastRenderResult) return;
     this.showToast('고화질 렌더링 인코딩 중...');
+    const artifacts = await this.getExportArtifacts();
 
     const res = await ExportEngine.encodeCanvas(
-      this.lastRenderResult.canvas,
+      artifacts.canvas,
       this.state.exportQualityMode,
       this.state.autoFitTargetMB
     );
@@ -366,14 +515,18 @@ class App {
     const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'COVER', ext);
     ExportEngine.downloadBlob(res.blob, filename);
 
-    this.showToast(`저장 완료! (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+    if (res.qualityWarning) {
+      this.showToast(`저장 완료! (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}% - 사진 디테일로 인해 품질이 조정되었습니다)`);
+    } else {
+      this.showToast(`저장 완료! (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+    }
   }
 
   async exportSeamlessSlide(slideNum) {
-    if (!this.lastRenderResult || !this.lastRenderResult.isMultiSlide) return;
-    const canvas = (slideNum === 1) ? this.lastRenderResult.slide1 : this.lastRenderResult.slide2;
-
     this.showToast(`슬라이드 ${slideNum} 인코딩 중...`);
+    const artifacts = await this.getExportArtifacts();
+    const canvas = (slideNum === 1) ? artifacts.slide1 : artifacts.slide2;
+
     const res = await ExportEngine.encodeCanvas(
       canvas,
       this.state.exportQualityMode,
@@ -389,15 +542,15 @@ class App {
     );
 
     ExportEngine.downloadBlob(res.blob, filename);
-    this.showToast(`슬라이드 ${slideNum} 저장 완료 (${res.sizeFormatted})`);
+    this.showToast(`슬라이드 ${slideNum} 저장 완료 (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
   }
 
   async shareSeamlessMobile() {
-    if (!this.lastRenderResult || !this.lastRenderResult.isMultiSlide) return;
     this.showToast('모바일 공유 패키지 생성 중...');
+    const artifacts = await this.getExportArtifacts();
 
-    const res1 = await ExportEngine.encodeCanvas(this.lastRenderResult.slide1, this.state.exportQualityMode);
-    const res2 = await ExportEngine.encodeCanvas(this.lastRenderResult.slide2, this.state.exportQualityMode);
+    const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
+    const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
     const ext = res1.format.toLowerCase();
     const f1 = new File([res1.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext), { type: res1.blob.type });
@@ -417,9 +570,10 @@ class App {
       return;
     }
     this.showToast('ZIP 압축 파일 생성 중...');
+    const artifacts = await this.getExportArtifacts();
 
-    const res1 = await ExportEngine.encodeCanvas(this.lastRenderResult.slide1, this.state.exportQualityMode);
-    const res2 = await ExportEngine.encodeCanvas(this.lastRenderResult.slide2, this.state.exportQualityMode);
+    const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
+    const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
     const ext = res1.format.toLowerCase();
     const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext);
@@ -442,7 +596,7 @@ class App {
     clearTimeout(this.toastTimeout);
     this.toastTimeout = setTimeout(() => {
       toast.classList.remove('show');
-    }, 2800);
+    }, 3200);
   }
 }
 
