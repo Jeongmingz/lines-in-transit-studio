@@ -1,0 +1,20 @@
+{
+  "name": "lines-in-transit-studio",
+  "version": "1.0.0",
+  "description": "Instagram photography magazine & seamless swipe generator for Fujifilm and iPod Touch",
+  "private": true,
+  "scripts": {
+    "start": "python -m http.server 3000",
+    "dev": "python -m http.server 3000",
+    "serve": "npx serve ."
+  },
+  "keywords": [
+    "photography",
+    "instagram",
+    "fujifilm",
+    "magazine",
+    "seamless-swipe"
+  ],
+  "author": "Lines in Transit Developer",
+  "license": "MIT"
+}
