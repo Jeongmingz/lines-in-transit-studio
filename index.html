@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lines in Transit Studio — Instagram Photography Generator</title>
+  <meta name="description" content="후지필름 X-T30 II & 아이팟 터치 사진을 4:5 매거진 커버와 심리스 파노라마로 10초 만에 제작하는 웹 스튜디오">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Local Vendored JSZip for offline/reliable ZIP export -->
+  <script src="vendor/jszip.min.js"></script>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <div class="brand-title">
+      <span>LINES IN TRANSIT</span>
+      <span class="brand-badge">STUDIO</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);">
+      <span style="display: flex; align-items: center; gap: 0.25rem;">
+        <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+        100% 클라이언트 렌더링 (서버 전송 없음)
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- Left: Preview Canvas Pane -->
+    <main class="preview-pane">
+      <div id="canvas-container" class="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+      </div>
+
+      <!-- Floating Canvas Toolbar -->
+      <div class="canvas-toolbar">
+        <button id="btn-reset-view" class="btn-icon" title="구도 및 줌 리셋">
+          ↺ 리셋
+        </button>
+        <span style="color: var(--border-subtle)">|</span>
+        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin: 0; font-size: 0.75rem;">
+          <input type="checkbox" id="chk-safety" style="accent-color: var(--accent-blue);">
+          <span>안전영역 가이드</span>
+        </label>
+        <span style="color: var(--border-subtle)">|</span>
+        <div id="live-info" style="font-size: 0.72rem; color: var(--text-primary);">
+          1080 × 1350 px
+        </div>
+      </div>
+    </main>
+
+    <!-- Right: Control Sidebar -->
+    <aside class="control-sidebar">
+      
+      <!-- Tabs -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="tab-studio">스튜디오</button>
+        <button class="tab-btn" data-tab="tab-export">내보내기</button>
+        <button class="tab-btn" data-tab="tab-guide">인스타 팁</button>
+      </div>
+
+      <!-- Tab 1: Studio Panel -->
+      <div id="tab-studio" class="panel-content">
+        
+        <!-- 1. Template Mode Selection -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>템플릿 모드</span>
+          </div>
+          <div class="mode-selector">
+            <button class="mode-btn active" data-mode="vertical">
+              <div>📐 세로 4:5</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">매거진 커버</div>
+            </button>
+            <button class="mode-btn" data-mode="seamless">
+              <div>🌊 심리스</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">가로 2분할</div>
+            </button>
+            <button class="mode-btn" data-mode="cinematic">
+              <div>🎬 시네마</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">3:2 와이드</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Photo Upload & Samples -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>사진 불러오기</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">JPEG / PNG 지원</span>
+          </div>
+          <div id="dropzone" class="dropzone">
+            <div class="dropzone-icon">📷</div>
+            <div class="dropzone-text">사진을 드래그하거나 클릭하여 업로드</div>
+            <div class="dropzone-sub">※ 아이폰 HEIC 또는 카메라 RAW는 JPEG 변환 후 권장</div>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" style="display: none;">
+          </div>
+
+          <!-- Sample Photo Quick Pills -->
+          <div style="margin-top: 0.85rem;">
+            <label style="font-size: 0.7rem;">빠른 샘플 테스트</label>
+            <div style="display: flex; gap: 0.4rem; margin-top: 0.35rem;">
+              <button class="btn-secondary sample-btn" data-sample="hotel" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">호텔 파사드</button>
+              <button class="btn-secondary sample-btn" data-sample="canal" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">운하 파노라마</button>
+              <button class="btn-secondary sample-btn" data-sample="street" style="padding: 0.35rem 0.6rem; font-size: 0.72rem;">거리 신호등</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Typography & Information -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>매거진 정보 표기</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.6rem;">
+            <div class="form-group">
+              <label>이슈 No.</label>
+              <input type="text" id="input-issue" value="01" maxlength="4">
+            </div>
+            <div class="form-group">
+              <label>작품/건축물 이름</label>
+              <input type="text" id="input-title" value="BASE LAYER HOTEL">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>도시 및 좌표 / 장소</label>
+            <input type="text" id="input-location" value="35°40'N · Tokyo City Center">
+          </div>
+          <div class="form-group">
+            <label>마스트헤드 상단 타이틀</label>
+            <input type="text" id="input-masthead" value="LINES IN TRANSIT">
+          </div>
+        </div>
+
+        <!-- 4. Gear & Film Presets -->
+        <div class="form-card">
+          <div class="card-title">
+            <span>카메라 & 필름 시뮬레이션</span>
+          </div>
+          <div class="form-group">
+            <label>프리셋 선택</label>
+            <select id="select-preset">
+              <!-- Dynamically populated from presets.js -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label>하단 각인 라벨 텍스트</label>
+            <input type="text" id="input-camera-tag" value="FUJIFILM X-T30 II · CLASSIC CHROME SOOC">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab 2: Export Panel -->
+      <div id="tab-export" class="panel-content" style="display: none;">
+        
+        <div class="form-card">
+          <div class="card-title">
+            <span>인코딩 및 품질 설정</span>
+          </div>
+          <div class="form-group">
+            <label>압축 모드</label>
+            <select id="select-quality-mode">
+              <option value="auto">자동 용량 최적화 (권장 밸런스: ~1.4MB 타깃)</option>
+              <option value="high">고화질 모드 (JPEG 0.95)</option>
+              <option value="normal">일반 최적화 (JPEG 0.92)</option>
+              <option value="png">무손실 원본 (PNG)</option>
+            </select>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+            💡 <strong>자동 용량 최적화</strong>는 캔버스 렌더링 후 Blob 용량을 확인하여, 전송 편의성과 화질의 균형을 위해 품질을 단계적으로 미세 조정합니다. (특정 플랫폼의 공식 기준이 아닌 앱 내부 최적화 알고리즘입니다.)
+          </div>
+        </div>
+
+        <!-- Single Slide Export (Vertical / Cinematic) -->
+        <div id="export-single-section" class="form-card">
+          <div class="card-title">
+            <span>파일 내보내기</span>
+          </div>
+          <div style="margin-bottom: 0.85rem; font-size: 0.75rem; color: var(--text-secondary);">
+            저장 파일명: <code id="filename-preview" style="color: var(--accent-gold); font-size: 0.72rem;">LIT_ISSUE-001_TOKYO_COVER.jpg</code>
+          </div>
+          <button id="btn-download-single" class="btn-primary">
+            📥 인스타그램 4:5 고화질 다운로드
+          </button>
+        </div>
+
+        <!-- Multi-Slide Export (Seamless Swipe) -->
+        <div id="export-seamless-section" class="form-card" style="display: none;">
+          <div class="card-title">
+            <span>심리스 2분할 내보내기</span>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
+            모바일 Safari 등 브라우저 팝업 차단에 대비해 개별 저장 및 모바일 공유를 지원합니다.
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <button id="btn-download-s1" class="btn-secondary" style="font-size: 0.75rem;">
+                📥 1번 슬라이드 저장
+              </button>
+              <button id="btn-download-s2" class="btn-secondary" style="font-size: 0.75rem;">
+                📥 2번 슬라이드 저장
+              </button>
+            </div>
+            <button id="btn-share-mobile" class="btn-primary" style="background: #10b981;">
+              📱 두 장 한 번에 모바일 공유 (AirDrop / 저장)
+            </button>
+            <button id="btn-download-zip" class="btn-secondary">
+              📦 ZIP 압축 파일로 받기
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab 3: Guide Panel -->
+      <div id="tab-guide" class="panel-content" style="display: none;">
+        
+        <div class="form-card">
+          <div class="card-title">
+            <span>인스타그램 공식 고화질 세팅</span>
+          </div>
+          <ul style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.1rem;">
+            <li>인스타그램 앱 실행 ➔ <strong>프로필</strong> ➔ 우측 상단 <strong>메뉴 (≡)</strong></li>
+            <li><strong>설정 및 개인정보</strong> ➔ <strong>미디어 품질</strong></li>
+            <li><strong style="color: var(--accent-gold);">"가장 높은 화질로 업로드"</strong> 토글 <strong>ON</strong> 권장</li>
+          </ul>
+        </div>
+
+        <div class="form-card">
+          <div class="card-title">
+            <span>추천 3-Slide 캐러셀 구성</span>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.6rem;">
+            모바일 피드에서 높은 완독률을 유도하는 캐러셀 구성:
+          </p>
+          <ol style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.1rem;">
+            <li><strong>1번 장</strong>: 스튜디오에서 생성한 <strong>매거진 커버</strong> (시선 집중)</li>
+            <li><strong>2번 장</strong>: 텍스트가 없는 <strong>순수 원본 사진</strong> (감상용)</li>
+            <li><strong>3번 장</strong>: 세부 줌인 디테일 또는 <strong>아이팟 촬영 비하인드</strong></li>
+          </ol>
+        </div>
+
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- Toast Message -->
+  <div id="toast">알림 메시지</div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
