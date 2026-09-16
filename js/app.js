@@ -14,7 +14,9 @@ class App {
     this.state = this.loadState();
     this.canvasEngine = new CanvasEngine();
     this.currentImage = null;
-    this.rafPending = false;
+    this.isRendering = false;
+    this.renderDirty = false;
+    this.isExporting = false;
 
     // DOM Elements
     this.mainCanvas = document.getElementById('main-canvas');
@@ -126,26 +128,35 @@ class App {
     if (this.zoomBadge) this.zoomBadge.textContent = `${this.state.zoom.toFixed(1)}x`;
   }
 
-  setZoom(newZoom) {
+  setZoom(newZoom, shouldSave = true) {
     this.state.zoom = Math.max(1.0, Math.min(3.0, parseFloat(newZoom)));
     this.syncZoomUI();
-    this.saveState();
+    if (shouldSave) {
+      this.saveState();
+    }
     this.scheduleRender();
   }
 
   scheduleRender() {
-    if (this.rafPending) return;
-    this.rafPending = true;
-    requestAnimationFrame(async () => {
-      this.rafPending = false;
+    this.renderDirty = true;
+    if (this.isRendering) return;
+    this.runRenderLoop();
+  }
+
+  async runRenderLoop() {
+    this.isRendering = true;
+    while (this.renderDirty) {
+      this.renderDirty = false;
+      await new Promise(resolve => requestAnimationFrame(resolve));
       await this.render();
-    });
+    }
+    this.isRendering = false;
   }
 
   initEventListeners() {
-    // Tab switching with Accessibility
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
+    // Tab switching with Accessibility and Keyboard Arrow Navigation
+    const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+    tabButtons.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         tabButtons.forEach(b => {
           b.classList.remove('active');
@@ -156,6 +167,24 @@ class App {
         btn.setAttribute('aria-selected', 'true');
         const targetPanel = document.getElementById(btn.dataset.tab);
         if (targetPanel) targetPanel.style.display = 'flex';
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        let targetIndex = -1;
+        if (e.key === 'ArrowRight') {
+          targetIndex = (index + 1) % tabButtons.length;
+        } else if (e.key === 'ArrowLeft') {
+          targetIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+        } else if (e.key === 'Home') {
+          targetIndex = 0;
+        } else if (e.key === 'End') {
+          targetIndex = tabButtons.length - 1;
+        }
+        if (targetIndex >= 0) {
+          e.preventDefault();
+          tabButtons[targetIndex].focus();
+          tabButtons[targetIndex].click();
+        }
       });
     });
 
@@ -225,9 +254,13 @@ class App {
     document.getElementById('select-preset').addEventListener('change', (e) => {
       this.state.selectedPresetId = e.target.value;
       const preset = GEAR_PRESETS.find(p => p.id === e.target.value);
+      const cameraInput = document.getElementById('input-camera-tag');
       if (preset && preset.id !== 'custom') {
         this.state.customCameraTag = preset.label;
-        document.getElementById('input-camera-tag').value = preset.label;
+        cameraInput.value = preset.label;
+      } else if (e.target.value === 'custom') {
+        cameraInput.focus();
+        cameraInput.select();
       }
       this.saveState();
       this.scheduleRender();
@@ -243,7 +276,10 @@ class App {
     // Zoom Controls
     if (this.zoomSlider) {
       this.zoomSlider.addEventListener('input', (e) => {
-        this.setZoom(e.target.value);
+        this.setZoom(e.target.value, false);
+      });
+      this.zoomSlider.addEventListener('change', () => {
+        this.saveState();
       });
     }
 
@@ -376,7 +412,7 @@ class App {
         );
         if (initialPinchDist > 0) {
           const scale = currentDist / initialPinchDist;
-          this.setZoom(Math.max(1.0, Math.min(3.0, initialPinchZoom * scale)));
+          this.setZoom(Math.max(1.0, Math.min(3.0, initialPinchZoom * scale)), false);
         }
       } else if (!isPinching && e.touches.length === 1 && isDragging) {
         onMove(e.touches[0].clientX, e.touches[0].clientY);
@@ -482,10 +518,10 @@ class App {
   }
 
   /**
-   * Fast preview rendering directly into mainCanvas
+   * Fast preview rendering directly into mainCanvas (50% scale for smooth RAF interaction)
    */
   async render() {
-    await this.canvasEngine.renderToCanvas(this.mainCanvas, this.currentImage, this.state);
+    await this.canvasEngine.renderToCanvas(this.mainCanvas, this.currentImage, this.state, 0.5);
 
     if (this.state.mode === 'seamless') {
       this.liveInfo.textContent = '2160 × 1350 px (2-Slide 심리스)';
@@ -495,72 +531,140 @@ class App {
   }
 
   /**
-   * Generate dedicated export master artifacts on-demand
+   * Generate dedicated export master artifacts on-demand (full resolution, zero guides)
    */
   async getExportArtifacts() {
     return await this.canvasEngine.renderExport(this.currentImage, this.state);
   }
 
-  async exportSingle() {
-    this.showToast('고화질 렌더링 인코딩 중...');
-    const artifacts = await this.getExportArtifacts();
+  setExportButtonsDisabled(disabled) {
+    const btnIds = [
+      'btn-download-single',
+      'btn-download-s1',
+      'btn-download-s2',
+      'btn-share-mobile',
+      'btn-download-zip'
+    ];
+    btnIds.forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = disabled;
+    });
+  }
 
-    const res = await ExportEngine.encodeCanvas(
-      artifacts.canvas,
-      this.state.exportQualityMode,
-      this.state.autoFitTargetMB
-    );
-
-    const ext = res.format.toLowerCase();
-    const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'COVER', ext);
-    ExportEngine.downloadBlob(res.blob, filename);
-
-    if (res.qualityWarning) {
-      this.showToast(`저장 완료! (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}% - 사진 디테일로 인해 품질이 조정되었습니다)`);
+  formatExportToast(res, prefix = '저장 완료!') {
+    if (this.state.exportQualityMode === 'auto') {
+      if (res.targetMet) {
+        if (res.qualityReduced) {
+          this.showToast(`${prefix} (목표 용량 달성 · ${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+        } else {
+          this.showToast(`${prefix} (${res.sizeFormatted} · 원본 품질 ${(res.quality * 100).toFixed(0)}%)`);
+        }
+      } else {
+        this.showToast(`${prefix} (목표 용량 초과 · ${res.sizeFormatted} · 가능한 최저 품질 ${(res.quality * 100).toFixed(0)}%)`);
+      }
     } else {
-      this.showToast(`저장 완료! (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+      this.showToast(`${prefix} (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+    }
+  }
+
+  async exportSingle() {
+    if (this.isExporting) {
+      this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
+    this.isExporting = true;
+    this.setExportButtonsDisabled(true);
+    this.showToast('고화질 렌더링 인코딩 중...');
+
+    try {
+      const artifacts = await this.getExportArtifacts();
+
+      const res = await ExportEngine.encodeCanvas(
+        artifacts.canvas,
+        this.state.exportQualityMode,
+        this.state.autoFitTargetMB
+      );
+
+      const ext = res.format.toLowerCase();
+      const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'COVER', ext);
+      ExportEngine.downloadBlob(res.blob, filename);
+
+      this.formatExportToast(res, '저장 완료!');
+    } catch (err) {
+      this.showToast(`저장 실패: ${err.message}`);
+    } finally {
+      this.isExporting = false;
+      this.setExportButtonsDisabled(false);
     }
   }
 
   async exportSeamlessSlide(slideNum) {
+    if (this.isExporting) {
+      this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
+    this.isExporting = true;
+    this.setExportButtonsDisabled(true);
     this.showToast(`슬라이드 ${slideNum} 인코딩 중...`);
-    const artifacts = await this.getExportArtifacts();
-    const canvas = (slideNum === 1) ? artifacts.slide1 : artifacts.slide2;
 
-    const res = await ExportEngine.encodeCanvas(
-      canvas,
-      this.state.exportQualityMode,
-      this.state.autoFitTargetMB
-    );
+    try {
+      const artifacts = await this.getExportArtifacts();
+      const canvas = (slideNum === 1) ? artifacts.slide1 : artifacts.slide2;
 
-    const ext = res.format.toLowerCase();
-    const filename = ExportEngine.generateFileName(
-      this.state.issueNo,
-      this.state.location,
-      `SLIDE-${String(slideNum).padStart(2, '0')}`,
-      ext
-    );
+      const res = await ExportEngine.encodeCanvas(
+        canvas,
+        this.state.exportQualityMode,
+        this.state.autoFitTargetMB
+      );
 
-    ExportEngine.downloadBlob(res.blob, filename);
-    this.showToast(`슬라이드 ${slideNum} 저장 완료 (${res.sizeFormatted} · 품질 ${(res.quality * 100).toFixed(0)}%)`);
+      const ext = res.format.toLowerCase();
+      const filename = ExportEngine.generateFileName(
+        this.state.issueNo,
+        this.state.location,
+        `SLIDE-${String(slideNum).padStart(2, '0')}`,
+        ext
+      );
+
+      ExportEngine.downloadBlob(res.blob, filename);
+      this.formatExportToast(res, `슬라이드 ${slideNum} 저장 완료!`);
+    } catch (err) {
+      this.showToast(`저장 실패: ${err.message}`);
+    } finally {
+      this.isExporting = false;
+      this.setExportButtonsDisabled(false);
+    }
   }
 
   async shareSeamlessMobile() {
+    if (this.isExporting) {
+      this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
+    this.isExporting = true;
+    this.setExportButtonsDisabled(true);
     this.showToast('모바일 공유 패키지 생성 중...');
-    const artifacts = await this.getExportArtifacts();
 
-    const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
-    const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
+    try {
+      const artifacts = await this.getExportArtifacts();
 
-    const ext = res1.format.toLowerCase();
-    const f1 = new File([res1.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext), { type: res1.blob.type });
-    const f2 = new File([res2.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext), { type: res2.blob.type });
+      const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
+      const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
-    const shareRes = await ExportEngine.shareFiles([f1, f2], `Lines in Transit Issue ${this.state.issueNo}`);
-    if (shareRes.success) {
-      this.showToast('공유 완료!');
-    } else if (shareRes.notSupported) {
-      alert('현재 브라우저 환경에서는 Web Share 파일 공유가 지원되지 않습니다. 아래 개별 저장 또는 ZIP 다운로드를 이용해 주세요.');
+      const ext = res1.format.toLowerCase();
+      const f1 = new File([res1.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext), { type: res1.blob.type });
+      const f2 = new File([res2.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext), { type: res2.blob.type });
+
+      const shareRes = await ExportEngine.shareFiles([f1, f2], `Lines in Transit Issue ${this.state.issueNo}`);
+      if (shareRes.success) {
+        this.showToast('공유 완료!');
+      } else if (shareRes.notSupported) {
+        alert('현재 브라우저 환경에서는 Web Share 파일 공유가 지원되지 않습니다. 아래 개별 저장 또는 ZIP 다운로드를 이용해 주세요.');
+      }
+    } catch (err) {
+      this.showToast(`공유 실패: ${err.message}`);
+    } finally {
+      this.isExporting = false;
+      this.setExportButtonsDisabled(false);
     }
   }
 
@@ -569,24 +673,38 @@ class App {
       alert('JSZip 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');
       return;
     }
+    if (this.isExporting) {
+      this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
+    this.isExporting = true;
+    this.setExportButtonsDisabled(true);
     this.showToast('ZIP 압축 파일 생성 중...');
-    const artifacts = await this.getExportArtifacts();
 
-    const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
-    const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
+    try {
+      const artifacts = await this.getExportArtifacts();
 
-    const ext = res1.format.toLowerCase();
-    const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext);
-    const name2 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext);
+      const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
+      const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
-    const zip = new JSZip();
-    zip.file(name1, res1.blob);
-    zip.file(name2, res2.blob);
+      const ext = res1.format.toLowerCase();
+      const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext);
+      const name2 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext);
 
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const zipName = `LIT_ISSUE-${String(this.state.issueNo).padStart(3, '0')}_PANORAMA.zip`;
-    ExportEngine.downloadBlob(zipBlob, zipName);
-    this.showToast('ZIP 다운로드 완료!');
+      const zip = new JSZip();
+      zip.file(name1, res1.blob);
+      zip.file(name2, res2.blob);
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipName = `LIT_ISSUE-${String(this.state.issueNo).padStart(3, '0')}_PANORAMA.zip`;
+      ExportEngine.downloadBlob(zipBlob, zipName);
+      this.showToast('ZIP 다운로드 완료!');
+    } catch (err) {
+      this.showToast(`ZIP 생성 실패: ${err.message}`);
+    } finally {
+      this.isExporting = false;
+      this.setExportButtonsDisabled(false);
+    }
   }
 
   showToast(msg) {

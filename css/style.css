@@ -45,8 +45,9 @@
   --accent-blue: #3b82f6;
   --accent-blue-hover: #2563eb;
   --accent-gold: #e5b974;
-  --font-serif: 'Cormorant Garamond', Garamond, Georgia, "Nanum Myeongjo", Batang, serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  --accent-red: #ef4444;
+  --font-serif: 'Cormorant Garamond', 'Nanum Myeongjo', Batang, Georgia, serif;
+  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * {
@@ -103,7 +104,7 @@ header {
 /* Main Layout */
 .app-container {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 430px;
   flex: 1;
   height: calc(100vh - 60px);
   overflow: hidden;
@@ -180,12 +181,21 @@ header {
   opacity: 1;
 }
 
+/* Single Slide Guides (Vertical 4:5 & Cinematic) */
+.guides-single {
+  display: block;
+}
+
+.canvas-wrapper.mode-seamless .guides-single {
+  display: none;
+}
+
 .guide-box {
   position: absolute;
-  top: 5%;
+  top: 4%;
   left: 5%;
   right: 5%;
-  bottom: 5%;
+  bottom: 4%;
   border: 1px dashed rgba(59, 130, 246, 0.75);
 }
 
@@ -207,33 +217,86 @@ header {
   border-top: 1px dashed rgba(59, 130, 246, 0.45);
 }
 
-.guide-cut-seam {
+/* Seamless 2-Slide Guides (Slide 1: 54..1026px, Slide 2: 1134..2106px) */
+.guides-seamless {
   display: none;
+}
+
+.canvas-wrapper.mode-seamless .guides-seamless {
+  display: block;
+}
+
+.guide-slide-box {
+  position: absolute;
+  top: 4%;
+  bottom: 4%;
+  border: 1px dashed rgba(59, 130, 246, 0.75);
+}
+
+.guide-slide-box.slide-1 {
+  left: 2.5%;
+  width: 45%;
+}
+
+.guide-slide-box.slide-2 {
+  left: 52.5%;
+  width: 45%;
+}
+
+.slide-label {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(59, 130, 246, 0.9);
+  background: rgba(12, 14, 18, 0.75);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.guide-slide-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed rgba(59, 130, 246, 0.35);
+}
+
+.guide-slide-v.axis-s1 {
+  left: 25%;
+}
+
+.guide-slide-v.axis-s2 {
+  left: 75%;
+}
+
+/* Seamless Cut Seam (Center 50% line, badge pinned to top so it never covers SWIPE badge) */
+.guide-cut-seam {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 50%;
   width: 2px;
-  border-left: 2px dashed rgba(239, 68, 68, 0.85);
+  border-left: 2px dashed rgba(239, 68, 68, 0.9);
   transform: translateX(-1px);
 }
 
-.canvas-wrapper.mode-seamless.show-guides .guide-cut-seam {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .cut-badge {
-  background: rgba(239, 68, 68, 0.9);
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.92);
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 /* Canvas Viewport Toolbar */

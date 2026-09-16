@@ -12,34 +12,43 @@ export class ExportEngine {
   static async encodeCanvas(canvas, mode = 'auto', targetMB = 1.4) {
     if (mode === 'png') {
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('PNG 인코딩에 실패했습니다.');
       return {
         blob,
         format: 'PNG',
         quality: 1.0,
         bytes: blob.size,
-        sizeFormatted: this.formatBytes(blob.size)
+        sizeFormatted: this.formatBytes(blob.size),
+        targetMet: true,
+        qualityReduced: false
       };
     }
 
     if (mode === 'high') {
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      if (!blob) throw new Error('JPEG 인코딩에 실패했습니다.');
       return {
         blob,
         format: 'JPEG',
         quality: 0.95,
         bytes: blob.size,
-        sizeFormatted: this.formatBytes(blob.size)
+        sizeFormatted: this.formatBytes(blob.size),
+        targetMet: true,
+        qualityReduced: false
       };
     }
 
     if (mode === 'normal') {
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+      if (!blob) throw new Error('JPEG 인코딩에 실패했습니다.');
       return {
         blob,
         format: 'JPEG',
         quality: 0.92,
         bytes: blob.size,
-        sizeFormatted: this.formatBytes(blob.size)
+        sizeFormatted: this.formatBytes(blob.size),
+        targetMet: true,
+        qualityReduced: false
       };
     }
 
@@ -52,6 +61,7 @@ export class ExportEngine {
 
     for (const q of testQualities) {
       const b = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', q));
+      if (!b) continue;
       selectedBlob = b;
       selectedQuality = q;
       if (b.size <= targetBytes) {
@@ -59,13 +69,21 @@ export class ExportEngine {
       }
     }
 
+    if (!selectedBlob) {
+      throw new Error('캔버스 이미지 인코딩에 실패했습니다.');
+    }
+
+    const targetMet = selectedBlob.size <= targetBytes;
+    const qualityReduced = selectedQuality < 0.94;
+
     return {
       blob: selectedBlob,
       format: 'JPEG',
       quality: selectedQuality,
       bytes: selectedBlob.size,
       sizeFormatted: this.formatBytes(selectedBlob.size),
-      qualityWarning: selectedQuality < 0.80
+      targetMet,
+      qualityReduced
     };
   }
 

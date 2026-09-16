@@ -7,8 +7,8 @@
 import { GEAR_PRESETS } from './presets.js';
 
 export class CanvasEngine {
-  static SERIF_FONT = "'Cormorant Garamond', Garamond, Georgia, 'Nanum Myeongjo', Batang, serif";
-  static SANS_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif";
+  static SERIF_FONT = "'Cormorant Garamond', 'Nanum Myeongjo', Batang, Georgia, serif";
+  static SANS_FONT = "'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
   constructor() {
     this.fontsLoaded = false;
@@ -70,14 +70,18 @@ export class CanvasEngine {
   }
 
   /**
-   * Direct render to target canvas (Used for 60fps UI preview without extra allocations)
+   * Fast preview rendering (Default scale: 0.5 -> 540x675 for vertical, 1080x675 for seamless)
+   * Reduces pixel count by 75% for silky smooth mobile performance.
    */
-  async renderToCanvas(targetCanvas, image, state) {
+  async renderToCanvas(targetCanvas, image, state, scale = 0.5) {
     await this.ensureFontsReady();
 
     const isSeamless = (state.mode === 'seamless');
-    const targetW = isSeamless ? 2160 : 1080;
-    const targetH = 1350;
+    const masterW = isSeamless ? 2160 : 1080;
+    const masterH = 1350;
+
+    const targetW = Math.round(masterW * scale);
+    const targetH = Math.round(masterH * scale);
 
     if (targetCanvas.width !== targetW || targetCanvas.height !== targetH) {
       targetCanvas.width = targetW;
@@ -85,6 +89,11 @@ export class CanvasEngine {
     }
 
     const ctx = targetCanvas.getContext('2d', { willReadFrequently: false });
+    ctx.save();
+    if (scale !== 1.0) {
+      ctx.scale(scale, scale);
+    }
+
     if (state.mode === 'vertical') {
       this.renderVertical(ctx, image, state);
     } else if (state.mode === 'seamless') {
@@ -92,6 +101,7 @@ export class CanvasEngine {
     } else if (state.mode === 'cinematic') {
       this.renderCinematic(ctx, image, state);
     }
+    ctx.restore();
   }
 
   /**
@@ -246,7 +256,7 @@ export class CanvasEngine {
     ctx.fillStyle = 'rgba(235, 240, 250, 0.9)';
     ctx.textAlign = 'right';
     ctx.font = `bold 22px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(`PANORAMA · [${state.issueNo || '01'}/1]`, W_single - 60, 78);
+    ctx.fillText(`PANORAMA · [1/2]`, W_single - 60, 78);
 
     // Slide 1 Glass Tag
     const tagX = 60, tagY = H - 170, tagW = W_single - 120, tagH = 122;
@@ -278,7 +288,7 @@ export class CanvasEngine {
     ctx.fillStyle = 'rgba(235, 240, 250, 0.9)';
     ctx.font = `bold 24px ${CanvasEngine.SANS_FONT}`;
     ctx.textAlign = 'left';
-    const s2LocFit = CanvasEngine.fitText(ctx, `${state.location || 'Kanazawa'} · [${state.issueNo || '01'}/2]`, 480, 24, 18, CanvasEngine.SANS_FONT, true);
+    const s2LocFit = CanvasEngine.fitText(ctx, `${state.location || 'Kanazawa'} · [2/2]`, 480, 24, 18, CanvasEngine.SANS_FONT, true);
     ctx.fillText(s2LocFit.text, W_single + 60, 78);
 
     ctx.fillStyle = '#ffffff';
@@ -363,8 +373,9 @@ export class CanvasEngine {
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 24px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(state.location || 'KANAZAWA, JP', W - 60, 100);
+    const locFit = CanvasEngine.fitText(ctx, (state.location || 'KANAZAWA, JP').toUpperCase(), 400, 24, 16, CanvasEngine.SANS_FONT, true);
+    ctx.font = `bold ${locFit.size}px ${CanvasEngine.SANS_FONT}`;
+    ctx.fillText(locFit.text, W - 60, 100);
 
     // Top divider
     ctx.strokeStyle = '#2a2e36';
@@ -392,8 +403,9 @@ export class CanvasEngine {
     ctx.stroke();
 
     ctx.fillStyle = 'rgba(220, 230, 245, 0.94)';
-    ctx.font = `bold 24px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(state.customCameraTag || 'FUJIFILM X-T30 II · SOOC', 60, tagY + 134);
+    const camFit = CanvasEngine.fitText(ctx, state.customCameraTag || 'FUJIFILM X-T30 II · SOOC', W - 360, 24, 16, CanvasEngine.SANS_FONT, true);
+    ctx.font = `bold ${camFit.size}px ${CanvasEngine.SANS_FONT}`;
+    ctx.fillText(camFit.text, 60, tagY + 134);
 
     ctx.textAlign = 'right';
     ctx.font = `20px ${CanvasEngine.SANS_FONT}`;

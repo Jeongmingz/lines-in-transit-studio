@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lines in Transit Studio — Instagram Photography Generator</title>
   <meta name="description" content="후지필름 X-T30 II & 아이팟 터치 사진을 4:5 매거진 커버와 심리스 파노라마로 10초 만에 제작하는 웹 스튜디오">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <!-- Local Vendored JSZip for offline/reliable ZIP export -->
   <script src="vendor/jszip.min.js"></script>
@@ -20,7 +23,7 @@
     <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);">
       <span style="display: flex; align-items: center; gap: 0.25rem;">
         <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-        100% 클라이언트 렌더링 (서버 전송 없음)
+        100% 클라이언트 렌더링 (업로드한 사진은 서버로 전송되지 않음)
       </span>
     </div>
   </header>
@@ -35,11 +38,27 @@
           <canvas id="main-canvas"></canvas>
           <!-- Pure CSS Safety Guide Overlay (Never affects exported canvas pixels) -->
           <div id="canvas-overlay" class="canvas-overlay">
-            <div class="guide-box"></div>
-            <div class="guide-axis-v"></div>
-            <div class="guide-axis-h"></div>
-            <div class="guide-cut-seam">
-              <span class="cut-badge">CUT SEAM</span>
+            <!-- Single Mode Safe Guide (Vertical & Cinematic) -->
+            <div class="guides-single">
+              <div class="guide-box"></div>
+              <div class="guide-axis-v"></div>
+              <div class="guide-axis-h"></div>
+            </div>
+            <!-- Seamless 2-Slide Guides: Slide 1 (54..1026px) & Slide 2 (1134..2106px) -->
+            <div class="guides-seamless">
+              <div class="guide-slide-box slide-1">
+                <span class="slide-label">SLIDE 1 SAFE</span>
+              </div>
+              <div class="guide-slide-box slide-2">
+                <span class="slide-label">SLIDE 2 SAFE</span>
+              </div>
+              <div class="guide-slide-v axis-s1"></div>
+              <div class="guide-slide-v axis-s2"></div>
+              <div class="guide-axis-h"></div>
+              <!-- Cut seam line with badge pinned to top (never touches center SWIPE badge) -->
+              <div class="guide-cut-seam">
+                <span class="cut-badge">CUT SEAM</span>
+              </div>
             </div>
           </div>
         </div>
@@ -80,7 +99,7 @@
       </div>
 
       <!-- Tab 1: Studio Panel -->
-      <div id="tab-studio" class="panel-content">
+      <div id="tab-studio" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-studio">
         
         <!-- 1. Template Mode Selection -->
         <div class="form-card">
@@ -172,7 +191,7 @@
       </div>
 
       <!-- Tab 2: Export Panel -->
-      <div id="tab-export" class="panel-content" style="display: none;">
+      <div id="tab-export" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-export" style="display: none;">
         
         <div class="form-card">
           <div class="card-title">
@@ -247,7 +266,7 @@
       </div>
 
       <!-- Tab 3: Guide Panel -->
-      <div id="tab-guide" class="panel-content" style="display: none;">
+      <div id="tab-guide" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-guide" style="display: none;">
         
         <div class="form-card">
           <div class="card-title">
