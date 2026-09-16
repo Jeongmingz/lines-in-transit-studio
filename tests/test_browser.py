@@ -159,6 +159,38 @@ def run_tests():
             arch_saved = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).typographyPreset")
             assert_true(arch_saved == "archivo", "Switching back to archivo persists properly")
 
+            # Test 7: Clean photo toggle & filename preview
+            page.click(".mode-btn[data-mode='vertical']")
+            page.wait_for_timeout(200)
+            page.click("#tab-btn-export")
+            page.wait_for_timeout(200)
+
+            chk_clean = page.locator("#chk-include-clean")
+            assert_true(chk_clean.is_checked(), "Clean photo checkbox is checked by default")
+
+            preview_text = page.locator("#filename-preview").inner_text()
+            assert_true("외 1장 (클린 사진)" in preview_text, "Filename preview indicates clean photo slide inclusion by default")
+
+            # Uncheck clean photo
+            page.uncheck("#chk-include-clean")
+            page.wait_for_timeout(200)
+            preview_uncheck = page.locator("#filename-preview").inner_text()
+            assert_true("외 1장" not in preview_uncheck, "Unchecking clean photo removes '외 1장' from filename preview")
+            clean_saved = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).includeCleanPhoto")
+            assert_true(clean_saved is False, "Unchecking clean photo persists false to localStorage")
+
+            # Re-check clean photo
+            page.check("#chk-include-clean")
+            page.wait_for_timeout(200)
+            preview_recheck = page.locator("#filename-preview").inner_text()
+            assert_true("외 1장 (클린 사진)" in preview_recheck, "Re-checking clean photo restores '외 1장 (클린 사진)' to preview")
+
+            # Test 8: Instagram Caption copy button is clickable in Studio tab
+            page.click("#tab-btn-studio")
+            page.wait_for_timeout(200)
+            caption_btn = page.locator("#btn-copy-caption")
+            assert_true(caption_btn.is_visible(), "Instagram caption copy button is visible in Studio tab")
+
             browser.close()
             print("\n[SUCCESS] ALL REAL BROWSER TESTS PASSED")
 

@@ -101,6 +101,16 @@ def test_filename_generation():
         "Cover filename with space sanitization"
     )
     assert_equal(
+        generate_file_name("1", "Tokyo Shibuya", "CLEAN", "jpg"),
+        "LIT_ISSUE-001_TOKYO_SHIBUYA_CLEAN.jpg",
+        "Clean photo filename with CLEAN suffix"
+    )
+    assert_equal(
+        generate_file_name("1", "Tokyo Shibuya", "CINEMATIC", "jpg"),
+        "LIT_ISSUE-001_TOKYO_SHIBUYA_CINEMATIC.jpg",
+        "Cinematic photo filename with CINEMATIC suffix"
+    )
+    assert_equal(
         generate_file_name("2", "도쿄/시부야 35°40'N", "SLIDE-01", "jpg"),
         "LIT_ISSUE-002_도쿄_시부야_35_40_N_SLIDE-01.jpg",
         "Slide 01 filename with Korean & symbols sanitization"
@@ -139,6 +149,7 @@ def test_typography_presets():
     content = open(path, 'r', encoding='utf-8').read()
     
     assert_true("typographyPreset: 'archivo'" in content, "DEFAULT_STATE defaults to archivo typography preset")
+    assert_true("includeCleanPhoto: true" in content, "DEFAULT_STATE defaults to includeCleanPhoto: true")
     assert_true("id: 'archivo'" in content, "Archivo typography preset exists")
     assert_true("id: 'instrument'" in content, "Instrument Serif typography preset exists")
     assert_true("id: 'ibm-plex'" in content, "IBM Plex typography preset exists")

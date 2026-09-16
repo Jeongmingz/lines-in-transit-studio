@@ -50,6 +50,9 @@ def check_canvas_engine():
     assert_true("fitText" in content, "Universal fitText helper implemented")
     assert_true("CanvasEngine.fitText" in content, "fitText invoked in CanvasEngine for layout titles")
     assert_true("nanum myeongjo" in content.lower() and "noto sans kr" in content.lower(), "Korean font fallbacks configured in canvas font stacks")
+    assert_true("renderCleanVertical" in content, "renderCleanVertical method implemented")
+    assert_true("renderCleanCinematic" in content, "renderCleanCinematic method implemented")
+    assert_true("drawRoundedRect" not in content.split("renderVertical(ctx, image, state)")[1].split("renderCleanVertical")[0], "renderVertical does not use drawRoundedRect (pure photography layout)")
 
 def check_export_engine():
     path = os.path.join(BASE_DIR, 'js', 'export-engine.js')
@@ -74,6 +77,8 @@ def check_html_and_css():
     assert_true("vendor/exifr.mini.umd.js" in html_content, "exifr script tag present in index.html")
     assert_true("gps-card" in html_content and "btn-fetch-address" in html_content, "GPS card and reverse geocode button present in HTML")
     assert_true('id="select-typography"' in html_content, "Typography preset dropdown present in index.html")
+    assert_true('id="chk-include-clean"' in html_content, "Clean photo toggle checkbox present in index.html")
+    assert_true('id="btn-copy-caption"' in html_content, "Instagram caption copy button present in index.html")
 
     assert_true(".cut-badge" in css_content and "top: 8px" in css_content, "Cut badge pinned to top in CSS")
     assert_true(".guide-slide-box.slide-1" in css_content, "Slide 1 safe area CSS rule present")

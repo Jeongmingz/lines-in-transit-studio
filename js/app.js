@@ -58,7 +58,8 @@ class App {
           zoom: typeof parsed.zoom === 'number' ? parsed.zoom : DEFAULT_STATE.zoom,
           panX: typeof parsed.panX === 'number' ? parsed.panX : DEFAULT_STATE.panX,
           panY: typeof parsed.panY === 'number' ? parsed.panY : DEFAULT_STATE.panY,
-          typographyPreset: parsed.typographyPreset || DEFAULT_STATE.typographyPreset
+          typographyPreset: parsed.typographyPreset || DEFAULT_STATE.typographyPreset,
+          includeCleanPhoto: (parsed.includeCleanPhoto !== undefined) ? parsed.includeCleanPhoto : DEFAULT_STATE.includeCleanPhoto
         };
       }
     } catch (e) {
@@ -72,6 +73,7 @@ class App {
       const cleanState = {
         mode: this.state.mode,
         typographyPreset: this.state.typographyPreset,
+        includeCleanPhoto: this.state.includeCleanPhoto,
         magazineTitle: this.state.magazineTitle,
         issueNo: this.state.issueNo,
         photoTitle: this.state.photoTitle,
@@ -114,6 +116,13 @@ class App {
     if (typoBadge) {
       typoBadge.textContent = currentTypo.badge;
     }
+
+    // Sync clean photo toggle
+    const chkClean = document.getElementById('chk-include-clean');
+    if (chkClean) {
+      chkClean.checked = (this.state.includeCleanPhoto !== false);
+    }
+
 
     // Sync form inputs from state
     document.getElementById('input-issue').value = this.state.issueNo;
@@ -397,8 +406,44 @@ class App {
       this.chkAppendCoords.addEventListener('change', () => this.handleAppendCoordsToggle());
     }
 
+    // Clean Photo toggle
+    const chkClean = document.getElementById('chk-include-clean');
+    if (chkClean) {
+      chkClean.addEventListener('change', (e) => {
+        this.state.includeCleanPhoto = e.target.checked;
+        this.saveState();
+        this.updateFilenamePreview();
+      });
+    }
+
+    // Instagram Caption clipboard copy
+    const btnCopyCaption = document.getElementById('btn-copy-caption');
+    if (btnCopyCaption) {
+      btnCopyCaption.addEventListener('click', () => {
+        const lines = [
+          this.state.magazineTitle || 'LINES IN TRANSIT',
+          `ISSUE ${this.state.issueNo || '01'} — ${this.state.photoTitle || ''}`,
+          `📍 ${this.state.location || ''}`,
+          `📷 ${this.state.customCameraTag || ''}`,
+          '',
+          '#linesintransit #fujifilm #streetphotography #architecture #urbanphotography'
+        ];
+        const caption = lines.filter(Boolean).join('\n');
+        navigator.clipboard.writeText(caption).then(() => {
+          this.showToast('인스타그램 캡션이 클립보드에 복사되었습니다!');
+        }).catch(() => {
+          this.showToast('캡션 복사에 실패했습니다.');
+        });
+      });
+    }
+
     document.getElementById('btn-download-single').addEventListener('click', () => this.exportSingle());
+    const btnShareVertical = document.getElementById('btn-share-vertical-mobile');
+    if (btnShareVertical) {
+      btnShareVertical.addEventListener('click', () => this.shareVerticalMobile());
+    }
     document.getElementById('btn-download-s1').addEventListener('click', () => this.exportSeamlessSlide(1));
+
     document.getElementById('btn-download-s2').addEventListener('click', () => this.exportSeamlessSlide(2));
     document.getElementById('btn-share-mobile').addEventListener('click', () => this.shareSeamlessMobile());
     document.getElementById('btn-download-zip').addEventListener('click', () => this.exportSeamlessZip());
@@ -525,9 +570,15 @@ class App {
     if (this.state.mode === 'seamless') {
       this.filenamePreview.textContent = `${ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext)} 외 1장`;
     } else {
-      this.filenamePreview.textContent = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'COVER', ext);
+      const tag = (this.state.mode === 'cinematic') ? 'CINEMATIC' : 'COVER';
+      if (this.state.includeCleanPhoto) {
+        this.filenamePreview.textContent = `${ExportEngine.generateFileName(this.state.issueNo, this.state.location, tag, ext)} 외 1장 (클린 사진)`;
+      } else {
+        this.filenamePreview.textContent = ExportEngine.generateFileName(this.state.issueNo, this.state.location, tag, ext);
+      }
     }
   }
+
 
   static toDMS(coordinate, isLatitude) {
     const absolute = Math.abs(coordinate);
@@ -827,18 +878,39 @@ class App {
 
     try {
       const artifacts = await this.getExportArtifacts();
+      const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
 
-      const res = await ExportEngine.encodeCanvas(
-        artifacts.canvas,
-        this.state.exportQualityMode,
-        this.state.autoFitTargetMB
-      );
+      if (artifacts.isMultiSlide) {
+        // Slide 1 (Cover / Cinematic)
+        const res1 = await ExportEngine.encodeCanvas(
+          artifacts.slide1,
+          this.state.exportQualityMode,
+          this.state.autoFitTargetMB
+        );
+        const file1Name = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+        ExportEngine.downloadBlob(res1.blob, file1Name);
 
-      const ext = res.format.toLowerCase();
-      const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'COVER', ext);
-      ExportEngine.downloadBlob(res.blob, filename);
+        // Slide 2 (Clean photo)
+        await new Promise(r => setTimeout(r, 350));
+        const res2 = await ExportEngine.encodeCanvas(
+          artifacts.slide2,
+          this.state.exportQualityMode,
+          this.state.autoFitTargetMB
+        );
+        const file2Name = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag2 || 'CLEAN', ext);
+        ExportEngine.downloadBlob(res2.blob, file2Name);
 
-      this.formatExportToast(res, '저장 완료!');
+        this.showToast(`커버와 클린 사진 2장 저장 완료! (${res1.sizeFormatted}, ${res2.sizeFormatted})`);
+      } else {
+        const res = await ExportEngine.encodeCanvas(
+          artifacts.canvas,
+          this.state.exportQualityMode,
+          this.state.autoFitTargetMB
+        );
+        const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+        ExportEngine.downloadBlob(res.blob, filename);
+        this.formatExportToast(res, '저장 완료!');
+      }
     } catch (err) {
       this.showToast(`저장 실패: ${err.message}`);
     } finally {
@@ -846,6 +918,56 @@ class App {
       this.setExportButtonsDisabled(false);
     }
   }
+
+  async shareVerticalMobile() {
+    if (this.isExporting) {
+      this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
+    this.isExporting = true;
+    this.setExportButtonsDisabled(true);
+    this.showToast('모바일 공유용 이미지 준비 중...');
+
+    try {
+      const artifacts = await this.getExportArtifacts();
+      const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
+      const mime = (this.state.exportQualityMode === 'png') ? 'image/png' : 'image/jpeg';
+
+      const res1 = await ExportEngine.encodeCanvas(
+        artifacts.isMultiSlide ? artifacts.slide1 : artifacts.canvas,
+        this.state.exportQualityMode,
+        this.state.autoFitTargetMB
+      );
+      const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+      const file1 = new File([res1.blob], name1, { type: mime });
+
+      const files = [file1];
+
+      if (artifacts.isMultiSlide && artifacts.slide2) {
+        const res2 = await ExportEngine.encodeCanvas(
+          artifacts.slide2,
+          this.state.exportQualityMode,
+          this.state.autoFitTargetMB
+        );
+        const name2 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag2 || 'CLEAN', ext);
+        const file2 = new File([res2.blob], name2, { type: mime });
+        files.push(file2);
+      }
+
+      const shareRes = await ExportEngine.shareFiles(files, `${this.state.magazineTitle} - ${this.state.photoTitle}`);
+      if (shareRes.success) {
+        this.showToast('공유 완료!');
+      } else if (shareRes.notSupported) {
+        this.showToast('모바일 공유를 지원하지 않는 브라우저입니다. 개별 저장을 이용해주세요.');
+      }
+    } catch (err) {
+      this.showToast(`공유 실패: ${err.message}`);
+    } finally {
+      this.isExporting = false;
+      this.setExportButtonsDisabled(false);
+    }
+  }
+
 
   async exportSeamlessSlide(slideNum) {
     if (this.isExporting) {

@@ -161,9 +161,10 @@ export class CanvasEngine {
     await this.ensureFontsReady();
     await this.ensurePresetFonts(state.typographyPreset);
 
-    const masterCanvas = document.createElement('canvas');
+    const includeClean = (state.includeCleanPhoto !== false);
 
     if (state.mode === 'seamless') {
+      const masterCanvas = document.createElement('canvas');
       masterCanvas.width = 2160;
       masterCanvas.height = 1350;
       const mctx = masterCanvas.getContext('2d');
@@ -190,26 +191,80 @@ export class CanvasEngine {
         canvas: masterCanvas,
         isMultiSlide: true,
         slide1,
-        slide2
+        slide2,
+        tag1: 'SLIDE-01',
+        tag2: 'SLIDE-02',
+        count: 2
       };
-    } else {
-      masterCanvas.width = 1080;
-      masterCanvas.height = 1350;
-      const mctx = masterCanvas.getContext('2d');
-      if (state.mode === 'vertical') {
-        this.renderVertical(mctx, image, state);
+    } else if (state.mode === 'vertical') {
+      const coverCanvas = document.createElement('canvas');
+      coverCanvas.width = 1080;
+      coverCanvas.height = 1350;
+      const cctx = coverCanvas.getContext('2d');
+      this.renderVertical(cctx, image, state);
+
+      if (includeClean) {
+        const cleanCanvas = document.createElement('canvas');
+        cleanCanvas.width = 1080;
+        cleanCanvas.height = 1350;
+        const clctx = cleanCanvas.getContext('2d');
+        this.renderCleanVertical(clctx, image, state);
+
+        return {
+          canvas: coverCanvas,
+          isMultiSlide: true,
+          slide1: coverCanvas,
+          slide2: cleanCanvas,
+          tag1: 'COVER',
+          tag2: 'CLEAN',
+          count: 2
+        };
       } else {
-        this.renderCinematic(mctx, image, state);
+        return {
+          canvas: coverCanvas,
+          isMultiSlide: false,
+          tag1: 'COVER'
+        };
       }
-      return {
-        canvas: masterCanvas,
-        isMultiSlide: false
-      };
+    } else { // cinematic
+      const cineCanvas = document.createElement('canvas');
+      cineCanvas.width = 1080;
+      cineCanvas.height = 1350;
+      const cctx = cineCanvas.getContext('2d');
+      this.renderCinematic(cctx, image, state);
+
+      if (includeClean) {
+        const cleanCanvas = document.createElement('canvas');
+        cleanCanvas.width = 1080;
+        cleanCanvas.height = 1350;
+        const clctx = cleanCanvas.getContext('2d');
+        this.renderCleanCinematic(clctx, image, state);
+
+        return {
+          canvas: cineCanvas,
+          isMultiSlide: true,
+          slide1: cineCanvas,
+          slide2: cleanCanvas,
+          tag1: 'CINEMATIC',
+          tag2: 'CLEAN',
+          count: 2
+        };
+      } else {
+        return {
+          canvas: cineCanvas,
+          isMultiSlide: false,
+          tag1: 'CINEMATIC'
+        };
+      }
     }
   }
 
   /**
    * 1. Mode A: Vertical 4:5 Magazine Cover (1080 x 1350)
+   * Refined Minimal Signature Layout:
+   * Top: LINES IN TRANSIT (Masthead)
+   * Bottom: Artwork Title & Location / Coordinates
+   * Pure photography emphasis; zero clutter, zero thick glass cards.
    */
   renderVertical(ctx, image, state) {
     const W = 1080, H = 1350;
@@ -226,44 +281,82 @@ export class CanvasEngine {
 
     const typo = CanvasEngine.getTypography(state.typographyPreset);
 
-    // Top contrast gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, 180);
-    grad.addColorStop(0, 'rgba(10, 12, 16, 0.72)');
-    grad.addColorStop(0.65, 'rgba(10, 12, 16, 0.35)');
-    grad.addColorStop(1, 'rgba(10, 12, 16, 0.0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, 180);
+    // 1. Subtle top gradient for masthead legibility
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 160);
+    topGrad.addColorStop(0, 'rgba(10, 12, 16, 0.65)');
+    topGrad.addColorStop(0.6, 'rgba(10, 12, 16, 0.25)');
+    topGrad.addColorStop(1, 'rgba(10, 12, 16, 0.0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, W, 160);
 
-    // Top Masthead
+    // 2. Subtle bottom gradient for title and location legibility (no box needed)
+    const btmGrad = ctx.createLinearGradient(0, H - 220, 0, H);
+    btmGrad.addColorStop(0, 'rgba(10, 12, 16, 0.0)');
+    btmGrad.addColorStop(0.4, 'rgba(10, 12, 16, 0.35)');
+    btmGrad.addColorStop(1, 'rgba(10, 12, 16, 0.70)');
+    ctx.fillStyle = btmGrad;
+    ctx.fillRect(0, H - 220, W, 220);
+
+    // Top: Masthead (Single pure branding)
     const rawMasthead = state.magazineTitle || 'LINES IN TRANSIT';
     const mastheadText = typo.headUppercase ? rawMasthead.toUpperCase() : rawMasthead;
-    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 320, 48, 32, typo.headFont, typo.headWeight, typo.headSpacing);
+    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 120, 48, 32, typo.headFont, typo.headWeight, typo.headSpacing);
     CanvasEngine.applyText(ctx, mastheadFit.text, 60, 80, typo.headFont, typo.headWeight, mastheadFit.size, typo.headSpacing, '#ffffff', 'left');
 
-    // Top Right Issue Tag
-    const issueTagText = `ISSUE ${state.issueNo || '01'} / ARCHIVE`;
-    CanvasEngine.applyText(ctx, issueTagText, W - 60, 78, typo.issueFont, typo.issueWeight, 22, typo.issueSpacing, 'rgba(235, 240, 250, 0.9)', 'right');
-
-    // Bottom Translucent Glass Tag (122px height, 48px margin from bottom edge)
-    const tagX = 60, tagY = H - 170, tagW = W - 120, tagH = 122, radius = 8;
-    this.drawRoundedRect(ctx, tagX, tagY, tagW, tagH, radius, 'rgba(18, 22, 28, 0.82)', 'rgba(255, 255, 255, 0.28)', 1);
-
-    // Bottom Tag - Line 1: Title
+    // Bottom - Line 1: Artwork Title
     const rawTitleBase = state.photoTitle || 'UNTITLED';
     const rawTitleText = typo.titleUppercase ? rawTitleBase.toUpperCase() : rawTitleBase;
-    const rawTitle = `${state.issueNo || '01'}  ${rawTitleText}`;
-    const titleFit = CanvasEngine.fitText(ctx, rawTitle, tagW - 360, 38, 26, typo.titleFont, typo.titleWeight, typo.titleSpacing);
-    CanvasEngine.applyText(ctx, titleFit.text, tagX + 28, tagY + 50, typo.titleFont, typo.titleWeight, titleFit.size, typo.titleSpacing, '#ffffff', 'left');
+    const titleFit = CanvasEngine.fitText(ctx, rawTitleText, W - 120, 42, 28, typo.titleFont, typo.titleWeight, typo.titleSpacing);
+    CanvasEngine.applyText(ctx, titleFit.text, 60, H - 105, typo.titleFont, typo.titleWeight, titleFit.size, typo.titleSpacing, '#ffffff', 'left');
 
-    // Bottom Tag - Line 2: Location
-    const locFit = CanvasEngine.fitText(ctx, state.location || 'Location', tagW - 360, 24, 18, typo.locationFont, typo.locationWeight, typo.locationSpacing);
-    CanvasEngine.applyText(ctx, locFit.text, tagX + 28, tagY + 92, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, 'rgba(200, 210, 225, 0.88)', 'left');
-
-    // Bottom Tag - Right: Camera / SOOC Tag
-    const tagText = state.customCameraTag || 'FUJIFILM X-T30 II · SOOC';
-    const camFit = CanvasEngine.fitText(ctx, tagText, 340, 24, 17, typo.cameraFont, typo.cameraWeight, typo.cameraSpacing);
-    CanvasEngine.applyText(ctx, camFit.text, tagX + tagW - 28, tagY + 70, typo.cameraFont, typo.cameraWeight, camFit.size, typo.cameraSpacing, 'rgba(235, 240, 250, 0.94)', 'right');
+    // Bottom - Line 2: Location or Coordinates
+    const locText = state.location || 'Location';
+    const locFit = CanvasEngine.fitText(ctx, locText, W - 120, 24, 18, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, locFit.text, 60, H - 62, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, 'rgba(230, 238, 250, 0.92)', 'left');
   }
+
+  /**
+   * Pure Clean Photo (1080 x 1350) - Zero text, zero overlays, matching user's composition
+   */
+  renderCleanVertical(ctx, image, state) {
+    const W = 1080, H = 1350;
+    ctx.clearRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    if (image) {
+      this.drawFittedImage(ctx, image, 0, 0, W, H, state.panX, state.panY, state.zoom);
+    } else {
+      ctx.fillStyle = '#1e2126';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  /**
+   * Pure Clean Cinematic Photo (1080 x 1350 with 3:2 centered frame)
+   */
+  renderCleanCinematic(ctx, image, state) {
+    const W = 1080, H = 1350;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#141619';
+    ctx.fillRect(0, 0, W, H);
+
+    const photoH = 720;
+    const photoY = 280;
+    if (image) {
+      this.drawFittedImage(ctx, image, 0, photoY, W, photoH, state.panX, state.panY, state.zoom);
+    }
+
+    ctx.strokeStyle = '#2d323b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, photoY);
+    ctx.lineTo(W, photoY);
+    ctx.moveTo(0, photoY + photoH);
+    ctx.lineTo(W, photoY + photoH);
+    ctx.stroke();
+  }
+
 
   /**
    * 2. Mode B: Seamless 2-Slide Panorama (2160 x 1350)

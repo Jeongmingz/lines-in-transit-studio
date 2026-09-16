@@ -156,6 +156,8 @@ export const DEFAULT_STATE = {
   panX: 0,
   panY: 0,
   exportQualityMode: 'auto', // 'auto', 'high', 'normal', 'png'
-  autoFitTargetMB: 1.4
+  autoFitTargetMB: 1.4,
+  includeCleanPhoto: true // Automatically generates a clean, text-free photo slide for Vertical and Cinematic
 };
+
 
