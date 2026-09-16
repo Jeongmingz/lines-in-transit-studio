@@ -4,7 +4,7 @@
  * decoupled CSS guides, and reliable client-side export.
  */
 
-import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE } from './presets.js';
+import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE, TYPOGRAPHY_PRESETS } from './presets.js';
 import { ImageLoader } from './image-loader.js';
 import { CanvasEngine } from './canvas-engine.js';
 import { ExportEngine } from './export-engine.js';
@@ -52,9 +52,14 @@ class App {
       const saved = localStorage.getItem('lit_studio_state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        delete parsed.image;
-        delete parsed.imageData;
-        return { ...DEFAULT_STATE, ...parsed };
+        return {
+          ...DEFAULT_STATE,
+          ...parsed,
+          zoom: typeof parsed.zoom === 'number' ? parsed.zoom : DEFAULT_STATE.zoom,
+          panX: typeof parsed.panX === 'number' ? parsed.panX : DEFAULT_STATE.panX,
+          panY: typeof parsed.panY === 'number' ? parsed.panY : DEFAULT_STATE.panY,
+          typographyPreset: parsed.typographyPreset || DEFAULT_STATE.typographyPreset
+        };
       }
     } catch (e) {
       console.warn('LocalStorage load error:', e);
@@ -66,6 +71,7 @@ class App {
     try {
       const cleanState = {
         mode: this.state.mode,
+        typographyPreset: this.state.typographyPreset,
         magazineTitle: this.state.magazineTitle,
         issueNo: this.state.issueNo,
         photoTitle: this.state.photoTitle,
@@ -97,6 +103,17 @@ class App {
       }
       select.appendChild(opt);
     });
+
+    // Sync typography preset UI
+    const typoSelect = document.getElementById('select-typography');
+    const typoBadge = document.getElementById('badge-typography');
+    if (typoSelect) {
+      typoSelect.value = this.state.typographyPreset || 'archivo';
+    }
+    const currentTypo = TYPOGRAPHY_PRESETS.find(p => p.id === (this.state.typographyPreset || 'archivo')) || TYPOGRAPHY_PRESETS[0];
+    if (typoBadge) {
+      typoBadge.textContent = currentTypo.badge;
+    }
 
     // Sync form inputs from state
     document.getElementById('input-issue').value = this.state.issueNo;
@@ -262,7 +279,23 @@ class App {
     bindInput('input-masthead', 'magazineTitle');
     bindInput('input-camera-tag', 'customCameraTag');
 
+    // Typography preset dropdown change
+    const typoSelect = document.getElementById('select-typography');
+    const typoBadge = document.getElementById('badge-typography');
+    if (typoSelect) {
+      typoSelect.addEventListener('change', (e) => {
+        this.state.typographyPreset = e.target.value;
+        const typo = TYPOGRAPHY_PRESETS.find(p => p.id === this.state.typographyPreset) || TYPOGRAPHY_PRESETS[0];
+        if (typoBadge) {
+          typoBadge.textContent = typo.badge;
+        }
+        this.saveState();
+        this.scheduleRender();
+      });
+    }
+
     // Preset dropdown change
+
     document.getElementById('select-preset').addEventListener('change', (e) => {
       this.state.selectedPresetId = e.target.value;
       const preset = GEAR_PRESETS.find(p => p.id === e.target.value);

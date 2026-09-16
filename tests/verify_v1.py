@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Lines in Transit Studio - Static Code & Asset Verification
 Verifies source code invariants, DOM attributes, vendor assets, and CSS rules.
@@ -26,11 +26,18 @@ def check_fonts():
     assert_true(os.path.isfile(f600_path), "cormorant-garamond-normal-600.woff2 exists")
     assert_true(os.path.isfile(f700_path), "cormorant-garamond-normal-700.woff2 exists")
     assert_true(os.path.isfile(fi600_path), "cormorant-garamond-italic-600.woff2 exists")
+    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'archivo-variable.woff2')), "archivo-variable.woff2 exists")
+    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'pretendard-variable.woff2')), "pretendard-variable.woff2 exists")
+    assert_true(os.path.isfile(os.path.join(BASE_DIR, 'assets', 'fonts', 'ibm-plex-mono-500.woff2')), "ibm-plex-mono-500.woff2 exists")
     assert_true(os.path.isfile(license_path), "LICENSE-OFL.txt exists")
+
+    license_txt = open(license_path, 'r', encoding='utf-8').read()
+    assert_true("Archivo" in license_txt and "Pretendard" in license_txt, "OFL license includes Archivo and Pretendard")
 
     h600 = hashlib.sha256(open(f600_path, 'rb').read()).hexdigest()
     h700 = hashlib.sha256(open(f700_path, 'rb').read()).hexdigest()
     assert_true(h600 != h700, f"Font weights 600 and 700 have distinct SHA256 hashes ({h600[:8]} vs {h700[:8]})")
+
 
 def check_canvas_engine():
     path = os.path.join(BASE_DIR, 'js', 'canvas-engine.js')
@@ -66,11 +73,14 @@ def check_html_and_css():
     assert_true("cut-badge" in html_content, "Central cut badge element present in HTML")
     assert_true("vendor/exifr.mini.umd.js" in html_content, "exifr script tag present in index.html")
     assert_true("gps-card" in html_content and "btn-fetch-address" in html_content, "GPS card and reverse geocode button present in HTML")
+    assert_true('id="select-typography"' in html_content, "Typography preset dropdown present in index.html")
 
     assert_true(".cut-badge" in css_content and "top: 8px" in css_content, "Cut badge pinned to top in CSS")
     assert_true(".guide-slide-box.slide-1" in css_content, "Slide 1 safe area CSS rule present")
     assert_true(".guide-slide-box.slide-2" in css_content, "Slide 2 safe area CSS rule present")
     assert_true(".gps-card" in css_content and ".gps-badge" in css_content, "GPS card CSS styles present")
+    assert_true(".badge-typography" in css_content, "Typography badge styles present in CSS")
+    assert_true("Archivo" in css_content and "Pretendard" in css_content, "Archivo and Pretendard font-face rules present in CSS")
 
 def check_app_controller():
     path = os.path.join(BASE_DIR, 'js', 'app.js')
@@ -85,6 +95,8 @@ def check_app_controller():
     assert_true("this.imageLoadRequestId" in content, "imageLoadRequestId race condition guard present")
     assert_true("handleReverseGeocode" in content, "handleReverseGeocode method present")
     assert_true("extractGps" in content, "extractGps method present")
+    assert_true("typographyPreset" in content, "typographyPreset state handling present in app.js")
+
 
 def check_api_and_vendor():
     exifr_path = os.path.join(BASE_DIR, 'vendor', 'exifr.mini.umd.js')

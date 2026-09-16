@@ -4,11 +4,16 @@
  * Decoupled from preview overlays; pure photographic rendering.
  */
 
-import { GEAR_PRESETS } from './presets.js';
+import { GEAR_PRESETS, TYPOGRAPHY_PRESETS } from './presets.js';
 
 export class CanvasEngine {
   static SERIF_FONT = "'Cormorant Garamond', 'Nanum Myeongjo', Batang, Georgia, serif";
-  static SANS_FONT = "'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  static SANS_FONT = "'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+
+  static getTypography(presetId) {
+    return TYPOGRAPHY_PRESETS.find(p => p.id === presetId) || TYPOGRAPHY_PRESETS[0];
+  }
 
   constructor() {
     this.fontsLoaded = false;
@@ -25,6 +30,23 @@ export class CanvasEngine {
       }
     }
   }
+
+  async ensurePresetFonts(presetId) {
+    const typo = CanvasEngine.getTypography(presetId);
+    if (document.fonts && document.fonts.load) {
+      try {
+        await Promise.allSettled([
+          document.fonts.load(`${typo.headWeight} 48px ${typo.headFont}`),
+          document.fonts.load(`${typo.titleWeight} 38px ${typo.titleFont}`),
+          document.fonts.load(`${typo.locationWeight} 24px ${typo.locationFont}`),
+          document.fonts.load(`${typo.cameraWeight} 24px ${typo.cameraFont}`)
+        ]);
+      } catch (e) {
+        // Safe fallback
+      }
+    }
+  }
+
 
   /**
    * Safe image downscale on initial load to protect mobile memory
@@ -47,15 +69,23 @@ export class CanvasEngine {
   /**
    * Universal text fitting and truncation helper
    */
-  static fitText(ctx, text, maxWidth, initialSize, minSize, fontFamily, isBold = false) {
+  static fitText(ctx, text, maxWidth, initialSize, minSize, fontFamily, isBoldOrWeight = false, letterSpacing = 'normal') {
     if (!text) return { text: '', size: initialSize };
     let size = initialSize;
-    const weight = isBold ? 'bold ' : '';
-    ctx.font = `${weight}${size}px ${fontFamily}`;
+    let weightStr = '';
+    if (typeof isBoldOrWeight === 'boolean') {
+      weightStr = isBoldOrWeight ? 'bold ' : '';
+    } else if (isBoldOrWeight) {
+      weightStr = `${isBoldOrWeight} `;
+    }
+    if (ctx.letterSpacing !== undefined) {
+      ctx.letterSpacing = letterSpacing || 'normal';
+    }
+    ctx.font = `${weightStr}${size}px ${fontFamily}`;
 
     while (ctx.measureText(text).width > maxWidth && size > minSize) {
       size -= 1;
-      ctx.font = `${weight}${size}px ${fontFamily}`;
+      ctx.font = `${weightStr}${size}px ${fontFamily}`;
     }
 
     let fitted = text;
@@ -70,11 +100,31 @@ export class CanvasEngine {
   }
 
   /**
+   * Helper: apply styled text with letter-spacing and alignment
+   */
+  static applyText(ctx, text, x, y, fontFamily, weight, size, letterSpacing, color, align = 'left') {
+    if (ctx.letterSpacing !== undefined) {
+      ctx.letterSpacing = letterSpacing || 'normal';
+    }
+    let weightStr = '';
+    if (typeof weight === 'boolean') {
+      weightStr = weight ? 'bold ' : '';
+    } else if (weight) {
+      weightStr = `${weight} `;
+    }
+    ctx.font = `${weightStr}${size}px ${fontFamily}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(text, x, y);
+  }
+
+  /**
    * Fast preview rendering (Default scale: 0.5 -> 540x675 for vertical, 1080x675 for seamless)
    * Reduces pixel count by 75% for silky smooth mobile performance.
    */
   async renderToCanvas(targetCanvas, image, state, scale = 0.5) {
     await this.ensureFontsReady();
+    await this.ensurePresetFonts(state.typographyPreset);
 
     const isSeamless = (state.mode === 'seamless');
     const masterW = isSeamless ? 2160 : 1080;
@@ -109,8 +159,10 @@ export class CanvasEngine {
    */
   async renderExport(image, state) {
     await this.ensureFontsReady();
+    await this.ensurePresetFonts(state.typographyPreset);
 
     const masterCanvas = document.createElement('canvas');
+
     if (state.mode === 'seamless') {
       masterCanvas.width = 2160;
       masterCanvas.height = 1350;
@@ -172,6 +224,8 @@ export class CanvasEngine {
       ctx.fillRect(0, 0, W, H);
     }
 
+    const typo = CanvasEngine.getTypography(state.typographyPreset);
+
     // Top contrast gradient
     const grad = ctx.createLinearGradient(0, 0, 0, 180);
     grad.addColorStop(0, 'rgba(10, 12, 16, 0.72)');
@@ -180,45 +234,35 @@ export class CanvasEngine {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, 180);
 
-    // Top Masthead (Prominent 48px Cormorant Garamond)
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    const mastheadText = (state.magazineTitle || 'LINES IN TRANSIT').toUpperCase();
-    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 320, 48, 32, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${mastheadFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(mastheadFit.text, 60, 80);
+    // Top Masthead
+    const rawMasthead = state.magazineTitle || 'LINES IN TRANSIT';
+    const mastheadText = typo.headUppercase ? rawMasthead.toUpperCase() : rawMasthead;
+    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 320, 48, 32, typo.headFont, typo.headWeight, typo.headSpacing);
+    CanvasEngine.applyText(ctx, mastheadFit.text, 60, 80, typo.headFont, typo.headWeight, mastheadFit.size, typo.headSpacing, '#ffffff', 'left');
 
-    // Top Right Issue Tag (Clear 22px Sans)
-    ctx.fillStyle = 'rgba(235, 240, 250, 0.9)';
-    ctx.textAlign = 'right';
-    ctx.font = `bold 22px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(`ISSUE ${state.issueNo || '01'} / ARCHIVE`, W - 60, 78);
+    // Top Right Issue Tag
+    const issueTagText = `ISSUE ${state.issueNo || '01'} / ARCHIVE`;
+    CanvasEngine.applyText(ctx, issueTagText, W - 60, 78, typo.issueFont, typo.issueWeight, 22, typo.issueSpacing, 'rgba(235, 240, 250, 0.9)', 'right');
 
     // Bottom Translucent Glass Tag (122px height, 48px margin from bottom edge)
     const tagX = 60, tagY = H - 170, tagW = W - 120, tagH = 122, radius = 8;
     this.drawRoundedRect(ctx, tagX, tagY, tagW, tagH, radius, 'rgba(18, 22, 28, 0.82)', 'rgba(255, 255, 255, 0.28)', 1);
 
-    // Bottom Tag - Line 1: Title (Prominent 38px Cormorant Garamond)
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    const rawTitle = `${state.issueNo || '01'}  ${(state.photoTitle || 'UNTITLED').toUpperCase()}`;
-    const titleFit = CanvasEngine.fitText(ctx, rawTitle, tagW - 360, 38, 26, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${titleFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(titleFit.text, tagX + 28, tagY + 50);
+    // Bottom Tag - Line 1: Title
+    const rawTitleBase = state.photoTitle || 'UNTITLED';
+    const rawTitleText = typo.titleUppercase ? rawTitleBase.toUpperCase() : rawTitleBase;
+    const rawTitle = `${state.issueNo || '01'}  ${rawTitleText}`;
+    const titleFit = CanvasEngine.fitText(ctx, rawTitle, tagW - 360, 38, 26, typo.titleFont, typo.titleWeight, typo.titleSpacing);
+    CanvasEngine.applyText(ctx, titleFit.text, tagX + 28, tagY + 50, typo.titleFont, typo.titleWeight, titleFit.size, typo.titleSpacing, '#ffffff', 'left');
 
-    // Bottom Tag - Line 2: Location (24px Sans)
-    ctx.fillStyle = 'rgba(200, 210, 225, 0.88)';
-    const locFit = CanvasEngine.fitText(ctx, state.location || 'Location', tagW - 360, 24, 18, CanvasEngine.SANS_FONT, false);
-    ctx.font = `${locFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(locFit.text, tagX + 28, tagY + 92);
+    // Bottom Tag - Line 2: Location
+    const locFit = CanvasEngine.fitText(ctx, state.location || 'Location', tagW - 360, 24, 18, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, locFit.text, tagX + 28, tagY + 92, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, 'rgba(200, 210, 225, 0.88)', 'left');
 
-    // Bottom Tag - Right: Camera / SOOC Tag (24px Sans)
-    ctx.fillStyle = 'rgba(235, 240, 250, 0.94)';
-    ctx.textAlign = 'right';
+    // Bottom Tag - Right: Camera / SOOC Tag
     const tagText = state.customCameraTag || 'FUJIFILM X-T30 II · SOOC';
-    const camFit = CanvasEngine.fitText(ctx, tagText, 340, 24, 17, CanvasEngine.SANS_FONT, true);
-    ctx.font = `bold ${camFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(camFit.text, tagX + tagW - 28, tagY + 70);
+    const camFit = CanvasEngine.fitText(ctx, tagText, 340, 24, 17, typo.cameraFont, typo.cameraWeight, typo.cameraSpacing);
+    CanvasEngine.applyText(ctx, camFit.text, tagX + tagW - 28, tagY + 70, typo.cameraFont, typo.cameraWeight, camFit.size, typo.cameraSpacing, 'rgba(235, 240, 250, 0.94)', 'right');
   }
 
   /**
@@ -237,6 +281,8 @@ export class CanvasEngine {
       ctx.fillRect(0, 0, W, H);
     }
 
+    const typo = CanvasEngine.getTypography(state.typographyPreset);
+
     // Top Gradient across whole 2160 width
     const grad = ctx.createLinearGradient(0, 0, 0, 180);
     grad.addColorStop(0, 'rgba(10, 12, 16, 0.72)');
@@ -246,57 +292,40 @@ export class CanvasEngine {
     ctx.fillRect(0, 0, W, 180);
 
     // ---------------- Slide 1 (Left: 0 ~ 1080) ----------------
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    const mastheadText = (state.magazineTitle || 'LINES IN TRANSIT').toUpperCase();
-    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W_single - 320, 48, 32, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${mastheadFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(mastheadFit.text, 60, 80);
+    const rawMasthead = state.magazineTitle || 'LINES IN TRANSIT';
+    const mastheadText = typo.headUppercase ? rawMasthead.toUpperCase() : rawMasthead;
+    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W_single - 320, 48, 32, typo.headFont, typo.headWeight, typo.headSpacing);
+    CanvasEngine.applyText(ctx, mastheadFit.text, 60, 80, typo.headFont, typo.headWeight, mastheadFit.size, typo.headSpacing, '#ffffff', 'left');
 
-    ctx.fillStyle = 'rgba(235, 240, 250, 0.9)';
-    ctx.textAlign = 'right';
-    ctx.font = `bold 22px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(`PANORAMA · [1/2]`, W_single - 60, 78);
+    CanvasEngine.applyText(ctx, 'PANORAMA · [1/2]', W_single - 60, 78, typo.issueFont, typo.issueWeight, 22, typo.issueSpacing, 'rgba(235, 240, 250, 0.9)', 'right');
 
     // Slide 1 Glass Tag
     const tagX = 60, tagY = H - 170, tagW = W_single - 120, tagH = 122;
     this.drawRoundedRect(ctx, tagX, tagY, tagW, tagH, 8, 'rgba(18, 22, 28, 0.82)', 'rgba(255, 255, 255, 0.28)', 1);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    const rawTitle = `${state.issueNo || '01'}  ${(state.photoTitle || 'PANORAMA').toUpperCase()}`;
-    const s1TitleFit = CanvasEngine.fitText(ctx, rawTitle, tagW - 56, 38, 26, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${s1TitleFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(s1TitleFit.text, tagX + 28, tagY + 50);
+    const s1TitleBase = state.photoTitle || 'PANORAMA';
+    const s1TitleText = typo.titleUppercase ? s1TitleBase.toUpperCase() : s1TitleBase;
+    const rawTitle = `${state.issueNo || '01'}  ${s1TitleText}`;
+    const s1TitleFit = CanvasEngine.fitText(ctx, rawTitle, tagW - 56, 38, 26, typo.titleFont, typo.titleWeight, typo.titleSpacing);
+    CanvasEngine.applyText(ctx, s1TitleFit.text, tagX + 28, tagY + 50, typo.titleFont, typo.titleWeight, s1TitleFit.size, typo.titleSpacing, '#ffffff', 'left');
 
-    ctx.fillStyle = 'rgba(200, 210, 225, 0.88)';
-    const s1LocFit = CanvasEngine.fitText(ctx, state.location || 'Kanazawa, Japan', tagW - 56, 24, 18, CanvasEngine.SANS_FONT, false);
-    ctx.font = `${s1LocFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(s1LocFit.text, tagX + 28, tagY + 92);
+    const s1LocFit = CanvasEngine.fitText(ctx, state.location || 'Kanazawa, Japan', tagW - 56, 24, 18, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, s1LocFit.text, tagX + 28, tagY + 92, typo.locationFont, typo.locationWeight, s1LocFit.size, typo.locationSpacing, 'rgba(200, 210, 225, 0.88)', 'left');
 
     // Slide 1 "SWIPE ➔" Badge at right edge (Enlarged 1.4x for high mobile visibility)
     const badgeW = 175, badgeH = 56;
     const badgeX = W_single - badgeW;
     const badgeY = Math.round(H / 2 - badgeH / 2);
     this.drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 6, 'rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)', 0);
-    ctx.fillStyle = '#0c0e12';
-    ctx.font = `bold 22px ${CanvasEngine.SANS_FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText('SWIPE ➔', badgeX + badgeW / 2, badgeY + 35);
+    CanvasEngine.applyText(ctx, 'SWIPE ➔', badgeX + badgeW / 2, badgeY + 35, typo.cameraFont, 'bold', 22, '0.04em', '#0c0e12', 'center');
 
     // ---------------- Slide 2 (Right: 1080 ~ 2160) ----------------
-    ctx.fillStyle = 'rgba(235, 240, 250, 0.9)';
-    ctx.font = `bold 24px ${CanvasEngine.SANS_FONT}`;
-    ctx.textAlign = 'left';
-    const s2LocFit = CanvasEngine.fitText(ctx, `${state.location || 'Kanazawa'} · [2/2]`, 480, 24, 18, CanvasEngine.SANS_FONT, true);
-    ctx.fillText(s2LocFit.text, W_single + 60, 78);
+    const s2LocFit = CanvasEngine.fitText(ctx, `${state.location || 'Kanazawa'} · [2/2]`, 480, 24, 18, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, s2LocFit.text, W_single + 60, 78, typo.locationFont, typo.locationWeight, s2LocFit.size, typo.locationSpacing, 'rgba(235, 240, 250, 0.9)', 'left');
 
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'right';
-    ctx.font = `bold 48px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText('SERIES ARCHIVE', W - 60, 80);
+    CanvasEngine.applyText(ctx, 'SERIES ARCHIVE', W - 60, 80, typo.headFont, typo.headWeight, 48, typo.headSpacing, '#ffffff', 'right');
 
-    // Slide 2 Right Glass Spec Box (Dynamic preset tags - Fixes hardcoded Classic Chrome issue)
+    // Slide 2 Right Glass Spec Box
     const s2BoxW = 520, s2BoxH = 115;
     const s2BoxX = W - 60 - s2BoxW;
     const s2BoxY = H - 165;
@@ -318,16 +347,11 @@ export class CanvasEngine {
       simText = 'CLASSIC CHROME · SOOC ARCHIVE';
     }
 
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    const camLineFit = CanvasEngine.fitText(ctx, cameraText, s2BoxW - 56, 26, 20, CanvasEngine.SANS_FONT, true);
-    ctx.font = `bold ${camLineFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(camLineFit.text, s2BoxX + 28, s2BoxY + 46);
+    const camLineFit = CanvasEngine.fitText(ctx, cameraText, s2BoxW - 56, 26, 20, typo.cameraFont, typo.cameraWeight, typo.cameraSpacing);
+    CanvasEngine.applyText(ctx, camLineFit.text, s2BoxX + 28, s2BoxY + 46, typo.cameraFont, typo.cameraWeight, camLineFit.size, typo.cameraSpacing, '#ffffff', 'left');
 
-    ctx.fillStyle = 'rgba(200, 210, 225, 0.88)';
-    const simLineFit = CanvasEngine.fitText(ctx, simText, s2BoxW - 56, 22, 16, CanvasEngine.SANS_FONT, false);
-    ctx.font = `${simLineFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(simLineFit.text, s2BoxX + 28, s2BoxY + 86);
+    const simLineFit = CanvasEngine.fitText(ctx, simText, s2BoxW - 56, 22, 16, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, simLineFit.text, s2BoxX + 28, s2BoxY + 86, typo.locationFont, typo.locationWeight, simLineFit.size, typo.locationSpacing, 'rgba(200, 210, 225, 0.88)', 'left');
   }
 
   /**
@@ -338,6 +362,8 @@ export class CanvasEngine {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#141619';
     ctx.fillRect(0, 0, W, H);
+
+    const typo = CanvasEngine.getTypography(state.typographyPreset);
 
     // 3:2 Photo centered: 1080 x 720 (y: 280 to 1000)
     const photoH = 720;
@@ -357,25 +383,17 @@ export class CanvasEngine {
     ctx.stroke();
 
     // Top Section
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    const mastheadFit = CanvasEngine.fitText(ctx, (state.magazineTitle || 'LINES IN TRANSIT').toUpperCase(), W - 120, 50, 36, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${mastheadFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(mastheadFit.text, 60, 95);
+    const rawMasthead = state.magazineTitle || 'LINES IN TRANSIT';
+    const mastheadText = typo.headUppercase ? rawMasthead.toUpperCase() : rawMasthead;
+    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 120, 50, 36, typo.headFont, typo.headWeight, typo.headSpacing);
+    CanvasEngine.applyText(ctx, mastheadFit.text, 60, 95, typo.headFont, typo.headWeight, mastheadFit.size, typo.headSpacing, '#ffffff', 'left');
 
-    ctx.font = `bold 24px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillStyle = 'rgba(195, 205, 220, 0.9)';
-    ctx.fillText('URBAN & ARCHITECTURAL ARCHIVE', 60, 142);
+    CanvasEngine.applyText(ctx, 'URBAN & ARCHITECTURAL ARCHIVE', 60, 142, typo.issueFont, typo.issueWeight, 24, typo.issueSpacing, 'rgba(195, 205, 220, 0.9)', 'left');
 
-    ctx.font = `20px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillStyle = 'rgba(145, 155, 170, 0.85)';
-    ctx.fillText(`VOL. ${state.issueNo || '01'} · SPECIAL WIDE SPREAD`, 60, 178);
+    CanvasEngine.applyText(ctx, `VOL. ${state.issueNo || '01'} · SPECIAL WIDE SPREAD`, 60, 178, typo.locationFont, typo.locationWeight, 20, typo.locationSpacing, 'rgba(145, 155, 170, 0.85)', 'left');
 
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
-    const locFit = CanvasEngine.fitText(ctx, (state.location || 'KANAZAWA, JP').toUpperCase(), 400, 24, 16, CanvasEngine.SANS_FONT, true);
-    ctx.font = `bold ${locFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(locFit.text, W - 60, 100);
+    const locFit = CanvasEngine.fitText(ctx, (state.location || 'KANAZAWA, JP').toUpperCase(), 400, 24, 16, typo.locationFont, typo.locationWeight, typo.locationSpacing);
+    CanvasEngine.applyText(ctx, locFit.text, W - 60, 100, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, '#ffffff', 'right');
 
     // Top divider
     ctx.strokeStyle = '#2a2e36';
@@ -386,15 +404,13 @@ export class CanvasEngine {
 
     // Bottom Editorial Section
     const tagY = 1055;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    const titleFit = CanvasEngine.fitText(ctx, `${state.issueNo || '01'}  ${(state.photoTitle || 'THE SCENE').toUpperCase()}`, W - 120, 42, 28, CanvasEngine.SERIF_FONT, true);
-    ctx.font = `bold ${titleFit.size}px ${CanvasEngine.SERIF_FONT}`;
-    ctx.fillText(titleFit.text, 60, tagY);
+    const titleBase = state.photoTitle || 'THE SCENE';
+    const titleFormatted = typo.titleUppercase ? titleBase.toUpperCase() : titleBase;
+    const rawTitle = `${state.issueNo || '01'}  ${titleFormatted}`;
+    const titleFit = CanvasEngine.fitText(ctx, rawTitle, W - 120, 42, 28, typo.titleFont, typo.titleWeight, typo.titleSpacing);
+    CanvasEngine.applyText(ctx, titleFit.text, 60, tagY, typo.titleFont, typo.titleWeight, titleFit.size, typo.titleSpacing, '#ffffff', 'left');
 
-    ctx.font = `22px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillStyle = 'rgba(185, 195, 210, 0.85)';
-    ctx.fillText('도시의 선과 여백이 빚어내는 고요한 찰나의 기록.', 60, tagY + 46);
+    CanvasEngine.applyText(ctx, '도시의 선과 여백이 빚어내는 고요한 찰나의 기록.', 60, tagY + 46, typo.locationFont, typo.locationWeight, 22, typo.locationSpacing, 'rgba(185, 195, 210, 0.85)', 'left');
 
     ctx.strokeStyle = '#2a2e36';
     ctx.beginPath();
@@ -402,16 +418,12 @@ export class CanvasEngine {
     ctx.lineTo(W - 60, tagY + 96);
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(220, 230, 245, 0.94)';
-    const camFit = CanvasEngine.fitText(ctx, state.customCameraTag || 'FUJIFILM X-T30 II · SOOC', W - 360, 24, 16, CanvasEngine.SANS_FONT, true);
-    ctx.font = `bold ${camFit.size}px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillText(camFit.text, 60, tagY + 134);
+    const camFit = CanvasEngine.fitText(ctx, state.customCameraTag || 'FUJIFILM X-T30 II · SOOC', W - 360, 24, 16, typo.cameraFont, typo.cameraWeight, typo.cameraSpacing);
+    CanvasEngine.applyText(ctx, camFit.text, 60, tagY + 134, typo.cameraFont, typo.cameraWeight, camFit.size, typo.cameraSpacing, 'rgba(220, 230, 245, 0.94)', 'left');
 
-    ctx.textAlign = 'right';
-    ctx.font = `20px ${CanvasEngine.SANS_FONT}`;
-    ctx.fillStyle = 'rgba(140, 150, 165, 0.85)';
-    ctx.fillText('ASPECT RATIO 3:2 WIDE', W - 60, tagY + 134);
+    CanvasEngine.applyText(ctx, 'ASPECT RATIO 3:2 WIDE', W - 60, tagY + 134, typo.locationFont, typo.locationWeight, 20, typo.locationSpacing, 'rgba(140, 150, 165, 0.85)', 'right');
   }
+
 
   /**
    * Helper: draw image with pan and zoom covering the destination rect

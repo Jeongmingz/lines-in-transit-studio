@@ -1,8 +1,33 @@
 @charset "UTF-8";
 
 /* ==========================================================================
-   Bundled Local Typography (Cormorant Garamond)
+   Bundled Local Typography (Archivo, Pretendard, IBM Plex Mono & Cormorant)
    ========================================================================== */
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('../assets/fonts/archivo-variable.woff2') format('woff2-variations'),
+       url('../assets/fonts/archivo-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url('../assets/fonts/pretendard-variable.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
 
 @font-face {
   font-family: 'Cormorant Garamond';
@@ -46,9 +71,12 @@
   --accent-blue-hover: #2563eb;
   --accent-gold: #e5b974;
   --accent-red: #ef4444;
-  --font-serif: 'Cormorant Garamond', 'Nanum Myeongjo', Batang, Georgia, serif;
-  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-brand: 'Archivo', 'Pretendard', sans-serif;
+  --font-serif: 'Instrument Serif', 'Cormorant Garamond', 'Maru Buri', Georgia, serif;
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Noto Sans KR', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
+
 
 * {
   box-sizing: border-box;
@@ -79,10 +107,10 @@ header {
 }
 
 .brand-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-brand);
   font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: -0.035em;
   color: #fff;
   display: flex;
   align-items: center;
@@ -100,6 +128,18 @@ header {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+.badge-typography {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  letter-spacing: 0.02em;
+}
+
 
 /* Main Layout */
 .app-container {

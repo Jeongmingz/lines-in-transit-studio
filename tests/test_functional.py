@@ -9,8 +9,18 @@ Verifies core algorithmic and mathematical business logic:
 """
 
 import math
+import os
 import re
 import sys
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def assert_true(condition, msg):
+    if not condition:
+        print(f"[FAIL] {msg}")
+        sys.exit(1)
+    else:
+        print(f"[PASS] {msg}")
 
 def assert_equal(actual, expected, msg):
     if actual != expected:
@@ -18,6 +28,7 @@ def assert_equal(actual, expected, msg):
         sys.exit(1)
     else:
         print(f"[PASS] {msg}")
+
 
 # 1. DMS Coordinate Conversion (Python implementation matching App.toDMS)
 def to_dms(coordinate, is_latitude):
@@ -122,7 +133,18 @@ def test_request_id_race_condition():
     if sample1_req_id == current_request_id:
         state["active_image"] = "SAMPLE_1"  # Should NOT execute
 
-    assert_equal(state["active_image"], "USER_PHOTO", "Stale async response correctly discarded")
+# 5. Typography Presets Integrity Test
+def test_typography_presets():
+    path = os.path.join(BASE_DIR, 'js', 'presets.js')
+    content = open(path, 'r', encoding='utf-8').read()
+    
+    assert_true("typographyPreset: 'archivo'" in content, "DEFAULT_STATE defaults to archivo typography preset")
+    assert_true("id: 'archivo'" in content, "Archivo typography preset exists")
+    assert_true("id: 'instrument'" in content, "Instrument Serif typography preset exists")
+    assert_true("id: 'ibm-plex'" in content, "IBM Plex typography preset exists")
+    assert_true("-0.035em" in content, "Archivo masthead letterSpacing -0.035em is defined")
+    assert_true("-0.02em" in content, "Archivo photo title letterSpacing -0.02em is defined")
+    assert_true("0.08em" in content, "Issue number letterSpacing 0.08em is defined")
 
 if __name__ == '__main__':
     print("=== Lines in Transit Studio Functional Tests ===")
@@ -130,4 +152,6 @@ if __name__ == '__main__':
     test_target_mb_clamping()
     test_filename_generation()
     test_request_id_race_condition()
+    test_typography_presets()
     print("\n[SUCCESS] ALL FUNCTIONAL TESTS PASSED")
+

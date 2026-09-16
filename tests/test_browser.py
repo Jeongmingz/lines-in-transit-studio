@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Lines in Transit Studio - End-to-End Real Browser Integration Tests
 Executes actual browser runtime via Playwright (MS Edge):
@@ -131,8 +131,37 @@ def run_tests():
             }""")
             assert_true(export_info["hasOverlayInDom"], "Overlay exists in DOM decoupled from canvas pixels")
 
+            # Test 6: Typography dropdown interaction and persistence
+            default_typo = page.locator("#select-typography").input_value()
+            default_badge = page.locator("#badge-typography").inner_text()
+            assert_true(default_typo == "archivo", "Default typography preset is archivo")
+            assert_true("1순위" in default_badge, "Default typography badge displays 1순위")
+
+            # Switch to Instrument Serif (2순위)
+            page.select_option("#select-typography", "instrument")
+            page.wait_for_timeout(300)
+            inst_badge = page.locator("#badge-typography").inner_text()
+            assert_true("2순위" in inst_badge, "Selecting instrument preset updates badge to 2순위")
+
+            # Check localStorage persistence
+            saved_preset = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).typographyPreset")
+            assert_true(saved_preset == "instrument", "Typography preset persists to localStorage")
+
+            # Switch to IBM Plex (3순위)
+            page.select_option("#select-typography", "ibm-plex")
+            page.wait_for_timeout(300)
+            ibm_badge = page.locator("#badge-typography").inner_text()
+            assert_true("3순위" in ibm_badge, "Selecting ibm-plex preset updates badge to 3순위")
+
+            # Switch back to Archivo (1순위)
+            page.select_option("#select-typography", "archivo")
+            page.wait_for_timeout(300)
+            arch_saved = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).typographyPreset")
+            assert_true(arch_saved == "archivo", "Switching back to archivo persists properly")
+
             browser.close()
             print("\n[SUCCESS] ALL REAL BROWSER TESTS PASSED")
+
 
     finally:
         httpd.shutdown()

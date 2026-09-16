@@ -92,12 +92,30 @@ python -X utf8 tests/test_browser.py
 
 ---
 
+## 🔤 타이포그래피 프리셋 시스템 (Typography Presets)
+
+사진 장르와 에디토리얼 무드에 맞춰 3가지 엄선된 타이포그래피 프리셋을 드롭다운에서 실시간으로 전환할 수 있습니다:
+
+| 프리셋 | 마스트헤드 | 사진 제목 | 장소 / 좌표 | 무드 & 적합 장르 |
+|:---|:---|:---|:---|:---|
+| **1. Archivo + Pretendard**<br>*(기본 권장 · 1순위)* | **Archivo 800**<br>(`-0.035em`) | **Archivo 700**<br>(`-0.02em`) | **Pretendard 500**<br>*(좌표: IBM Plex Mono 500)* | 뉴욕 지하철(Vignelli) & 스위스 모더니즘<br>단단하고 정갈한 도시·건축·스트리트 사진 |
+| **2. Instrument Serif + 마루 부리**<br>*(2순위)* | **Instrument Serif 400** | **Instrument Serif** (영문)<br>**마루 부리 600** (한글) | **Pretendard 500** | 컨템포러리 패션·독립잡지 에디토리얼<br>감각적인 포트레이트 및 인물 사진 |
+| **3. IBM Plex Sans + KR**<br>*(3순위)* | **IBM Plex Sans Cond 700** | **IBM Plex Sans KR 600** | **IBM Plex Sans KR 400** | 공공 교통 안내 표지판, 기술 데이터시트<br>냉철한 다큐멘터리 및 시청각 아카이빙 |
+
+---
+
 ## 📜 오픈소스 라이선스 안내 (Open Source Licenses)
 
-- **Cormorant Garamond**: SIL Open Font License 1.1 ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **Archivo**: SIL Open Font License 1.1 by Omnibus-Type ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **Pretendard**: SIL Open Font License 1.1 by Kil Hyung-jin ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **IBM Plex**: SIL Open Font License 1.1 by IBM Corp. ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **Instrument Serif**: SIL Open Font License 1.1 by Instrument ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **Maru Buri**: SIL Open Font License 1.1 by NAVER Corp. ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
+- **Cormorant Garamond**: SIL Open Font License 1.1 by Cormorant Project Authors ([LICENSE-OFL.txt](assets/fonts/LICENSE-OFL.txt))
 - **exifr**: MIT License by Mike Kovařík ([LICENSE-exifr.txt](vendor/LICENSE-exifr.txt))
 - **JSZip**: Dual MIT / GPLv3 License
 - **Address Data**: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL)
+
 
 ---
 

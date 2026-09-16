@@ -1,8 +1,15 @@
 Copyright 2015 the Cormorant Project Authors (github.com/CatharsisFonts/Cormorant)
+Copyright 2016 The Archivo Project Authors (github.com/Omnibus-Type/Archivo)
+Copyright 2021 Kil Hyung-jin, with Reserved Font Name Pretendard (github.com/orioncactus/pretendard)
+Copyright 2017 IBM Corp. (github.com/ibm/plex)
+Copyright 2023 Instrument (github.com/Instrument/instrument-serif)
+Copyright 2020 NAVER Corp. (hangeul.naver.com/font/maruburi)
+
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://scripts.sil.org/OFL
+
 
 
 -----------------------------------------------------------

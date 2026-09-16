@@ -7,8 +7,11 @@
   <meta name="description" content="후지필름 X-T30 II & 아이팟 터치 사진을 4:5 매거진 커버와 심리스 파노라마로 10초 만에 제작하는 웹 스튜디오">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri.css">
   <link rel="stylesheet" href="css/style.css">
+
   <!-- Local Vendored JSZip & exifr for offline/reliable export & GPS analysis -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/exifr.mini.umd.js"></script>
@@ -152,7 +155,22 @@
           <div class="card-title">
             <span>매거진 정보 표기</span>
           </div>
+
+          <!-- Typography Preset Dropdown -->
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label for="select-typography" style="margin: 0; font-weight: 600;">타이포그래피 프리셋</label>
+              <span id="badge-typography" class="badge-typography">1순위 권장</span>
+            </div>
+            <select id="select-typography" class="form-select" aria-label="타이포그래피 프리셋 선택">
+              <option value="archivo" selected>1. Archivo + Pretendard (도시 &amp; 건축 모더니즘 · 권장)</option>
+              <option value="instrument">2. Instrument Serif + 마루 부리 (컨템포러리 에디토리얼)</option>
+              <option value="ibm-plex">3. IBM Plex Sans + KR (교통 시스템 &amp; 아카이브)</option>
+            </select>
+          </div>
+
           <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.6rem;">
+
             <div class="form-group">
               <label>이슈 No.</label>
               <input type="text" id="input-issue" value="01" maxlength="4">
