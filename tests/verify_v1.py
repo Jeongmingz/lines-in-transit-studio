@@ -45,14 +45,14 @@ def check_canvas_engine():
 
     assert_true("scale = 0.5" in content, "renderToCanvas supports scale parameter defaulting to 0.5")
     assert_true("ctx.scale(scale, scale)" in content, "renderToCanvas scales context via ctx.scale()")
-    assert_true("PANORAMA · [1/2]" in content, "Slide 1 index is correctly formatted as PANORAMA · [1/2]")
-    assert_true("[2/2]" in content and "state.location" in content, "Slide 2 index is correctly formatted as [location] · [2/2]")
+    assert_true("renderPhoto" in content, "renderPhoto method implemented for PHOTO format")
+    assert_true("renderChapter" in content, "renderChapter method implemented for CHAPTER format")
+    assert_true("renderPanorama" in content, "renderPanorama method implemented for PANORAMA format")
     assert_true("fitText" in content, "Universal fitText helper implemented")
     assert_true("CanvasEngine.fitText" in content, "fitText invoked in CanvasEngine for layout titles")
-    assert_true("nanum myeongjo" in content.lower() and "noto sans kr" in content.lower(), "Korean font fallbacks configured in canvas font stacks")
-    assert_true("renderCleanVertical" in content, "renderCleanVertical method implemented")
-    assert_true("renderCleanCinematic" in content, "renderCleanCinematic method implemented")
-    assert_true("drawRoundedRect" not in content.split("renderVertical(ctx, image, state)")[1].split("renderCleanVertical")[0], "renderVertical does not use drawRoundedRect (pure photography layout)")
+    assert_true("Pretendard" in content and "Archivo" in content, "Archivo and Pretendard configured in canvas font stacks")
+    assert_true("URBAN & ARCHITECTURAL ARCHIVE" not in content, "Hardcoded urban archive slogan removed from canvas engine")
+    assert_true("도시의 선과 여백" not in content, "Korean hardcoded slogan removed from canvas engine")
 
 def check_export_engine():
     path = os.path.join(BASE_DIR, 'js', 'export-engine.js')
@@ -62,6 +62,7 @@ def check_export_engine():
     assert_true("targetMet" in content, "targetMet boolean returned in encodeCanvas")
     assert_true("qualityReduced" in content, "qualityReduced boolean returned in encodeCanvas")
     assert_true("Math.max(0.5, Math.min(5.0, parsedMB))" in content, "targetMB clamped between 0.5MB and 5.0MB")
+    assert_true("generateFileName" in content, "generateFileName helper implemented")
 
 def check_html_and_css():
     html_path = os.path.join(BASE_DIR, 'index.html')
@@ -70,22 +71,24 @@ def check_html_and_css():
     css_path = os.path.join(BASE_DIR, 'css', 'style.css')
     css_content = open(css_path, 'r', encoding='utf-8').read()
 
-    assert_true("Nanum+Myeongjo" in html_content and "Noto+Sans+KR" in html_content, "Google Fonts link present in index.html")
+    assert_true("JOURNAL STUDIO" in html_content, "Header badge updated to JOURNAL STUDIO in index.html")
     assert_true('role="tabpanel"' in html_content, "tabpanel ARIA role present in index.html")
     assert_true("guides-single" in html_content and "guides-seamless" in html_content, "Split guides structure in HTML")
     assert_true("cut-badge" in html_content, "Central cut badge element present in HTML")
     assert_true("vendor/exifr.mini.umd.js" in html_content, "exifr script tag present in index.html")
     assert_true("gps-card" in html_content and "btn-fetch-address" in html_content, "GPS card and reverse geocode button present in HTML")
-    assert_true('id="select-typography"' in html_content, "Typography preset dropdown present in index.html")
-    assert_true('id="chk-include-clean"' in html_content, "Clean photo toggle checkbox present in index.html")
+    assert_true('id="select-series"' in html_content, "Series selection dropdown present in index.html")
+    assert_true('id="input-date"' in html_content, "Capture date input present in index.html")
+    assert_true('id="select-typography"' not in html_content, "Typography preset dropdown removed from index.html (unified brand)")
+    assert_true('id="chk-include-clean"' not in html_content, "Clean photo toggle checkbox removed from index.html")
     assert_true('id="btn-copy-caption"' in html_content, "Instagram caption copy button present in index.html")
     assert_true('id="input-caption-note"' in html_content, "Observation note textarea present in index.html")
+    assert_true('id="btn-sample-1"' in html_content and 'id="btn-sample-2"' in html_content and 'id="btn-sample-3"' in html_content, "3 genre sample buttons present in HTML")
 
     assert_true(".cut-badge" in css_content and "top: 8px" in css_content, "Cut badge pinned to top in CSS")
     assert_true(".guide-slide-box.slide-1" in css_content, "Slide 1 safe area CSS rule present")
     assert_true(".guide-slide-box.slide-2" in css_content, "Slide 2 safe area CSS rule present")
     assert_true(".gps-card" in css_content and ".gps-badge" in css_content, "GPS card CSS styles present")
-    assert_true(".badge-typography" in css_content, "Typography badge styles present in CSS")
     assert_true("Archivo" in css_content and "Pretendard" in css_content, "Archivo and Pretendard font-face rules present in CSS")
 
 def check_app_controller():
@@ -101,8 +104,7 @@ def check_app_controller():
     assert_true("this.imageLoadRequestId" in content, "imageLoadRequestId race condition guard present")
     assert_true("handleReverseGeocode" in content, "handleReverseGeocode method present")
     assert_true("extractGps" in content, "extractGps method present")
-    assert_true("typographyPreset" in content, "typographyPreset state handling present in app.js")
-
+    assert_true("select-series" in content, "select-series event handling present in app.js")
 
 def check_api_and_vendor():
     exifr_path = os.path.join(BASE_DIR, 'vendor', 'exifr.mini.umd.js')
@@ -119,8 +121,9 @@ def check_readme():
     path = os.path.join(BASE_DIR, 'README.md')
     content = open(path, 'r', encoding='utf-8').read()
 
-    assert_true("60fps" not in content, "Exaggerated 60fps claim removed from README")
-    assert_true("부드러운 인터랙션을 목표로 최적화되었습니다" in content, "Realistic performance description present in README")
+    assert_true("Journal Post Maker" in content, "Journal Post Maker definition present in README")
+    assert_true("70% 사진 · 20% 기록 · 10% 브랜드" in content, "70:20:10 rule present in README")
+    assert_true("PHOTO" in content and "CHAPTER" in content and "PANORAMA" in content, "3 formats documented in README")
 
 if __name__ == '__main__':
     print("=== Lines in Transit Studio Static Verification ===")

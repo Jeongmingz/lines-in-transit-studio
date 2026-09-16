@@ -1,6 +1,15 @@
 /**
  * Lines in Transit Studio - Presets & Data Definitions
+ * Journal Post Maker for landscape, spatial, and travel photography.
  */
+
+export const SERIES_PRESETS = [
+  'PASSING PLACES',
+  'CITY LINES',
+  'WATERLINES',
+  'OPEN LAND',
+  'POCKET NOTES'
+];
 
 export const GEAR_PRESETS = [
   {
@@ -40,124 +49,83 @@ export const GEAR_PRESETS = [
 export const SAMPLE_PHOTOS = [
   {
     id: 'hotel',
-    name: '호텔 파사드 & 택시',
+    name: '🏙 공간과 건축',
     path: './assets/samples/sample-01.jpg',
-    mode: 'vertical',
-    issueNo: '01',
+    mode: 'photo',
+    series: 'CITY LINES',
+    seriesNo: '01',
     title: 'BASE LAYER HOTEL',
-    location: '35°40\'N · Tokyo City Center',
+    location: 'TOKYO · JAPAN',
+    captureDate: '2026',
     presetId: 'xt30ii_classic_chrome'
+  },
+  {
+    id: 'landscape',
+    name: '🏞 자연 풍경',
+    path: './assets/samples/sample-03.jpg',
+    mode: 'chapter',
+    series: 'PASSING PLACES',
+    seriesNo: '02',
+    title: 'AVENUE OF TREES',
+    location: 'KANAZAWA · JAPAN',
+    captureDate: '2026',
+    presetId: 'ipod_touch_7'
   },
   {
     id: 'canal',
-    name: '운하 & 도심 전경 (파노라마)',
+    name: '🌊 물길과 여행',
     path: './assets/samples/sample-02.jpg',
-    mode: 'seamless',
-    issueNo: '02',
-    title: 'CANAL CITY ARCHIVE',
-    location: '36°33\'N · Urban Waterway',
+    mode: 'panorama',
+    series: 'WATERLINES',
+    seriesNo: '03',
+    title: 'KANAZAWA WATERWAY',
+    location: 'KANAZAWA · JAPAN',
+    captureDate: '2026',
     presetId: 'xt30ii_classic_chrome'
-  },
-  {
-    id: 'street',
-    name: '기하학 파사드 & 신호등',
-    path: './assets/samples/sample-03.jpg',
-    mode: 'vertical',
-    issueNo: '03',
-    title: 'URBAN INTERSECTION',
-    location: 'Tokyo, Japan',
-    presetId: 'ipod_touch_7'
   }
 ];
 
-export const TYPOGRAPHY_PRESETS = [
-  {
-    id: 'archivo',
-    name: '1. Archivo + Pretendard (도시 & 건축 · 권장)',
-    badge: '1순위 권장',
-    headFont: "'Archivo', 'Pretendard', sans-serif",
-    headWeight: '800',
-    headSpacing: '-0.035em',
-    headUppercase: true,
-    titleFont: "'Archivo', 'Pretendard', sans-serif",
-    titleWeight: '700',
-    titleSpacing: '-0.02em',
-    titleUppercase: true,
-    issueFont: "'Archivo', 'Pretendard', sans-serif",
-    issueWeight: '700',
-    issueSpacing: '0.08em',
-    locationFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-    locationWeight: '500',
-    locationSpacing: '0.02em',
-    cameraFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-    cameraWeight: '600',
-    cameraSpacing: '0.08em',
-    monoFont: "'IBM Plex Mono', 'Pretendard', monospace"
-  },
-  {
-    id: 'instrument',
-    name: '2. Instrument Serif + 마루 부리 (컨템포러리 에디토리얼)',
-    badge: '2순위 세리프',
-    headFont: "'Instrument Serif', 'Maru Buri', Georgia, serif",
-    headWeight: '400',
-    headSpacing: '0.01em',
-    headUppercase: true,
-    titleFont: "'Instrument Serif', 'Maru Buri', serif",
-    titleWeight: '400',
-    titleSpacing: '0.01em',
-    titleUppercase: false,
-    issueFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-    issueWeight: '600',
-    issueSpacing: '0.08em',
-    locationFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-    locationWeight: '500',
-    locationSpacing: '0.02em',
-    cameraFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-    cameraWeight: '600',
-    cameraSpacing: '0.06em',
-    monoFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif"
-  },
-  {
-    id: 'ibm-plex',
-    name: '3. IBM Plex Sans + KR (교통 시스템 & 아카이브)',
-    badge: '3순위 표지판',
-    headFont: "'IBM Plex Sans Condensed', 'IBM Plex Sans KR', sans-serif",
-    headWeight: '700',
-    headSpacing: '-0.01em',
-    headUppercase: true,
-    titleFont: "'IBM Plex Sans Condensed', 'IBM Plex Sans KR', sans-serif",
-    titleWeight: '600',
-    titleSpacing: '-0.01em',
-    titleUppercase: true,
-    issueFont: "'IBM Plex Mono', monospace",
-    issueWeight: '500',
-    issueSpacing: '0.06em',
-    locationFont: "'IBM Plex Sans KR', sans-serif",
-    locationWeight: '400',
-    locationSpacing: '0.02em',
-    cameraFont: "'IBM Plex Sans KR', sans-serif",
-    cameraWeight: '500',
-    cameraSpacing: '0.06em',
-    monoFont: "'IBM Plex Mono', monospace"
-  }
-];
+/**
+ * Unified Brand Typography Configuration
+ * Consistent, refined identity: Archivo for header/series, Pretendard for title & metadata.
+ */
+export const BRAND_TYPOGRAPHY = {
+  mastheadFont: "'Archivo', -apple-system, sans-serif",
+  mastheadWeight: '800',
+  mastheadSpacing: '-0.035em',
+  seriesFont: "'Archivo', 'Pretendard', sans-serif",
+  seriesWeight: '700',
+  seriesSpacing: '0.06em',
+  titleFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+  titleWeight: '600',
+  titleSpacing: '-0.01em',
+  locationFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+  locationWeight: '500',
+  locationSpacing: '0.02em',
+  dateFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+  dateWeight: '400',
+  dateSpacing: '0.04em',
+  monoFont: "'IBM Plex Mono', 'Pretendard', monospace"
+};
 
 export const DEFAULT_STATE = {
-  mode: 'vertical', // 'vertical' (Type A 4:5), 'seamless' (2160x1350 2-slide), 'cinematic' (1080x1350 3:2 centered)
-  typographyPreset: 'archivo', // 'archivo' (1순위), 'instrument' (2순위), 'ibm-plex' (3순위)
+  mode: 'photo', // 'photo' (clean single), 'chapter' (cover + clean), 'panorama' (2-slide 2160x1350)
+  series: 'PASSING PLACES',
+  seriesNo: '01',
+  photoTitle: 'KANAZAWA WATERWAY',
+  location: 'KANAZAWA · JAPAN',
+  captureDate: '2026',
   magazineTitle: 'LINES IN TRANSIT',
-  issueNo: '01',
-  photoTitle: 'BASE LAYER HOTEL',
-  location: '35°40\'N · Tokyo City Center',
+  photoFitMode: 'cover', // 'cover' (4:5 crop) or 'fit' (aspect ratio preserved / letterboxed)
+  panoramaOverlay: false, // default clean photo for panorama
   selectedPresetId: 'xt30ii_classic_chrome',
-  customCameraTag: 'FUJIFILM X-T30 II · SOOC',
+  customCameraTag: 'FUJIFILM X-T30 II · CLASSIC CHROME SOOC',
   showSafetyGuide: false,
   zoom: 1.0,
   panX: 0,
   panY: 0,
   exportQualityMode: 'auto', // 'auto', 'high', 'normal', 'png'
-  autoFitTargetMB: 1.4,
-  includeCleanPhoto: true // Automatically generates a clean, text-free photo slide for Vertical and Cinematic
+  autoFitTargetMB: 1.4
 };
 
 

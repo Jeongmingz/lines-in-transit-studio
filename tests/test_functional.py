@@ -88,37 +88,43 @@ def test_target_mb_clamping():
     assert_equal(clamp_target_mb("invalid"), 1.4, "Invalid string targetMB defaults to 1.4")
 
 # 3. Filename Generation (matching ExportEngine.generateFileName)
-def generate_file_name(issue_no='01', location='SCENE', suffix='COVER', ext='jpg'):
+def generate_file_name(issue_no='01', location='SCENE', suffix='PHOTO', ext='jpg', series=''):
     clean_no = str(issue_no).zfill(3)
     clean_loc = re.sub(r'[^a-zA-Z0-9가-힣]', '_', location)
     clean_loc = re.sub(r'_+', '_', clean_loc)[:15].upper() or 'SCENE'
+
+    if series:
+        clean_series = re.sub(r'[^a-zA-Z0-9가-힣]', '_', series)
+        clean_series = re.sub(r'_+', '_', clean_series)[:15].upper() or 'JOURNAL'
+        return f"LIT_{clean_series}-{clean_no}_{clean_loc}_{suffix}.{ext}"
+
     return f"LIT_ISSUE-{clean_no}_{clean_loc}_{suffix}.{ext}"
 
 def test_filename_generation():
     assert_equal(
-        generate_file_name("1", "Tokyo Shibuya", "COVER", "jpg"),
-        "LIT_ISSUE-001_TOKYO_SHIBUYA_COVER.jpg",
-        "Cover filename with space sanitization"
+        generate_file_name("1", "Kanazawa Waterway", "PHOTO", "jpg", "PASSING PLACES"),
+        "LIT_PASSING_PLACES-001_KANAZAWA_WATERW_PHOTO.jpg",
+        "Photo filename with series and location sanitization"
     )
     assert_equal(
-        generate_file_name("1", "Tokyo Shibuya", "CLEAN", "jpg"),
-        "LIT_ISSUE-001_TOKYO_SHIBUYA_CLEAN.jpg",
-        "Clean photo filename with CLEAN suffix"
+        generate_file_name("1", "Kanazawa", "01_COVER", "jpg", "PASSING PLACES"),
+        "LIT_PASSING_PLACES-001_KANAZAWA_01_COVER.jpg",
+        "Chapter cover filename with 01_COVER suffix"
     )
     assert_equal(
-        generate_file_name("1", "Tokyo Shibuya", "CINEMATIC", "jpg"),
-        "LIT_ISSUE-001_TOKYO_SHIBUYA_CINEMATIC.jpg",
-        "Cinematic photo filename with CINEMATIC suffix"
+        generate_file_name("1", "Kanazawa", "02_CLEAN", "jpg", "PASSING PLACES"),
+        "LIT_PASSING_PLACES-001_KANAZAWA_02_CLEAN.jpg",
+        "Clean photo filename with 02_CLEAN suffix"
     )
     assert_equal(
-        generate_file_name("2", "도쿄/시부야 35°40'N", "SLIDE-01", "jpg"),
-        "LIT_ISSUE-002_도쿄_시부야_35_40_N_SLIDE-01.jpg",
-        "Slide 01 filename with Korean & symbols sanitization"
+        generate_file_name("2", "도쿄/시부야 35°40'N", "01_LEFT", "jpg", "CITY LINES"),
+        "LIT_CITY_LINES-002_도쿄_시부야_35_40_N_01_LEFT.jpg",
+        "Slide 01 filename with Korean & symbols sanitization and series"
     )
     assert_equal(
-        generate_file_name("15", "", "COVER", "png"),
-        "LIT_ISSUE-015_SCENE_COVER.png",
-        "Fallback to SCENE for empty location"
+        generate_file_name("15", "", "PHOTO", "png", ""),
+        "LIT_ISSUE-015_SCENE_PHOTO.png",
+        "Fallback to LIT_ISSUE and SCENE for empty series and location"
     )
 
 # 4. Request ID Race Condition State Machine
@@ -143,19 +149,24 @@ def test_request_id_race_condition():
     if sample1_req_id == current_request_id:
         state["active_image"] = "SAMPLE_1"  # Should NOT execute
 
-# 5. Typography Presets Integrity Test
-def test_typography_presets():
+    assert_equal(state["active_image"], "USER_PHOTO", "Fast user photo wins over slow sample load")
+
+# 5. Journal Presets & Typography Integrity Test
+def test_journal_presets():
     path = os.path.join(BASE_DIR, 'js', 'presets.js')
     content = open(path, 'r', encoding='utf-8').read()
     
-    assert_true("typographyPreset: 'archivo'" in content, "DEFAULT_STATE defaults to archivo typography preset")
-    assert_true("includeCleanPhoto: true" in content, "DEFAULT_STATE defaults to includeCleanPhoto: true")
-    assert_true("id: 'archivo'" in content, "Archivo typography preset exists")
-    assert_true("id: 'instrument'" in content, "Instrument Serif typography preset exists")
-    assert_true("id: 'ibm-plex'" in content, "IBM Plex typography preset exists")
+    assert_true("mode: 'photo'" in content, "DEFAULT_STATE defaults to photo format")
+    assert_true("series: 'PASSING PLACES'" in content, "DEFAULT_STATE defaults to PASSING PLACES series")
+    assert_true("photoFitMode: 'cover'" in content, "DEFAULT_STATE defaults to photoFitMode: 'cover'")
+    assert_true("SERIES_PRESETS" in content, "SERIES_PRESETS exported")
+    assert_true("PASSING PLACES" in content and "CITY LINES" in content and "WATERLINES" in content, "Core series presets defined")
+    assert_true("BRAND_TYPOGRAPHY" in content, "BRAND_TYPOGRAPHY exported")
     assert_true("-0.035em" in content, "Archivo masthead letterSpacing -0.035em is defined")
-    assert_true("-0.02em" in content, "Archivo photo title letterSpacing -0.02em is defined")
-    assert_true("0.08em" in content, "Issue number letterSpacing 0.08em is defined")
+    assert_true("-0.01em" in content, "Photo title letterSpacing -0.01em is defined")
+    assert_true("0.06em" in content, "Series number letterSpacing 0.06em is defined")
+    assert_true("SAMPLE_PHOTOS" in content, "SAMPLE_PHOTOS exported")
+    assert_true("hotel" in content and "landscape" in content and "canal" in content, "3 genre sample photos defined")
 
 if __name__ == '__main__':
     print("=== Lines in Transit Studio Functional Tests ===")
@@ -163,6 +174,6 @@ if __name__ == '__main__':
     test_target_mb_clamping()
     test_filename_generation()
     test_request_id_race_condition()
-    test_typography_presets()
+    test_journal_presets()
     print("\n[SUCCESS] ALL FUNCTIONAL TESTS PASSED")
 

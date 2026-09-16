@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lines in Transit Studio — Instagram Photography Generator</title>
-  <meta name="description" content="후지필름 X-T30 II & 아이팟 터치 사진을 4:5 매거진 커버와 심리스 파노라마로 10초 만에 제작하는 웹 스튜디오">
+  <title>Lines in Transit — Journal Post Maker</title>
+  <meta name="description" content="풍경, 공간, 여행 사진을 클린 포스트와 챕터 커버, 심리스 파노라마로 정리하는 개인 사진 스튜디오">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri.css">
   <link rel="stylesheet" href="css/style.css">
 
   <!-- Local Vendored JSZip & exifr for offline/reliable export & GPS analysis -->
@@ -22,12 +21,12 @@
   <header>
     <div class="brand-title">
       <span>LINES IN TRANSIT</span>
-      <span class="brand-badge">STUDIO</span>
+      <span class="brand-badge">JOURNAL STUDIO</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);" title="사진과 편집 내용은 브라우저에서 처리됩니다. 주소 자동 찾기를 사용하는 경우에만 사진에서 추출한 GPS 좌표가 주소 조회 서비스로 전송됩니다. 사진 원본은 전송되지 않습니다.">
+    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted);" title="풍경, 공간, 여행 사진을 위한 Journal Post Maker">
       <span style="display: flex; align-items: center; gap: 0.35rem;">
         <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-        <span>사진 브라우저 처리 (원본 미전송) · GPS 선택 조회</span>
+        <span>풍경·공간·여행 저널 메이커 · 원본 미전송 로컬 처리</span>
       </span>
     </div>
   </header>
@@ -105,24 +104,39 @@
       <!-- Tab 1: Studio Panel -->
       <div id="tab-studio" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-studio">
         
-        <!-- 1. Template Mode Selection -->
+        <!-- 1. Format Selection -->
         <div class="form-card">
           <div class="card-title">
-            <span>템플릿 모드</span>
+            <span>게시물 포맷 선택</span>
           </div>
           <div class="mode-selector">
-            <button class="mode-btn active" data-mode="vertical">
-              <div>📐 세로 4:5</div>
-              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">포트폴리오 &amp; 챕터</div>
+            <button class="mode-btn active" data-mode="photo">
+              <div>📷 PHOTO</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">클린 포스트</div>
             </button>
-            <button class="mode-btn" data-mode="seamless">
-              <div>🌊 심리스</div>
+            <button class="mode-btn" data-mode="chapter">
+              <div>📖 CHAPTER</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">표지 + 클린 2장</div>
+            </button>
+            <button class="mode-btn" data-mode="panorama">
+              <div>🌊 PANORAMA</div>
               <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">가로 2분할</div>
             </button>
-            <button class="mode-btn" data-mode="cinematic">
-              <div>🎬 시네마</div>
-              <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">3:2 와이드</div>
-            </button>
+          </div>
+
+          <!-- Framing option for PHOTO mode -->
+          <div id="photo-fit-group" style="margin-top: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">프레이밍:</span>
+            <button id="btn-fit-cover" class="btn-secondary btn-sm active" style="flex: 1; font-size: 0.72rem; padding: 0.35rem 0.2rem;">4:5 채우기 (Crop)</button>
+            <button id="btn-fit-letterbox" class="btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.35rem 0.2rem;">원본 비율 유지 (Fit)</button>
+          </div>
+
+          <!-- Overlay option for PANORAMA mode -->
+          <div id="panorama-overlay-group" style="margin-top: 0.65rem; display: none;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.72rem; color: var(--text-secondary);">
+              <input type="checkbox" id="chk-panorama-overlay" style="accent-color: var(--accent-blue);">
+              <span>미니멀 텍스트 오버레이 (마스트헤드 &amp; 화살표)</span>
+            </label>
           </div>
         </div>
 
@@ -134,56 +148,66 @@
           </div>
           <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="사진 업로드: 사진 파일을 드래그하거나 엔터 키를 눌러 선택하세요">
             <div class="dropzone-icon">📷</div>
-            <div class="dropzone-text">사진을 드래그하거나 클릭하여 업로드</div>
-            <div class="dropzone-sub">※ 아이폰 HEIC 또는 카메라 RAW는 JPEG 변환 후 권장</div>
+            <div class="dropzone-text">오늘 기록할 사진을 불러오세요</div>
+            <div class="dropzone-sub">※ 클릭하거나 사진 파일을 드래그하여 업로드</div>
             <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" style="display: none;">
           </div>
-
-          <!-- Sample Photo Quick Pills -->
+          
           <div style="margin-top: 0.65rem;">
             <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem;">샘플 사진 테스트:</div>
-            <div style="display: flex; gap: 0.4rem;">
-              <button id="btn-sample-1" class="btn-secondary btn-sm" style="flex: 1;">
-                🏨 샘플 1 (도쿄 세로)
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.35rem;">
+              <button id="btn-sample-1" class="btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.4rem 0.2rem;">
+                🏙 공간과 건축
               </button>
-              <button id="btn-sample-2" class="btn-secondary btn-sm" style="flex: 1;">
-                🌊 샘플 2 (가나자와 수로)
+              <button id="btn-sample-2" class="btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.4rem 0.2rem;">
+                🏞 자연 풍경
+              </button>
+              <button id="btn-sample-3" class="btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.4rem 0.2rem;">
+                🌊 물길과 여행
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 3. Typography & Magazine Metadata -->
+        <!-- 3. Journal Metadata -->
         <div class="form-card">
           <div class="card-title">
-            <span>매거진 정보 표기</span>
-            <span id="badge-typography" class="badge-typography">1순위 권장</span>
+            <span>저널 정보 기록</span>
           </div>
 
-          <!-- Typography Preset Dropdown -->
-          <div class="form-group">
-            <label>타이포그래피 프리셋</label>
-            <select id="select-typography">
-              <option value="archivo" selected>1순위: Archivo + Pretendard (도시·건축 권장)</option>
-              <option value="instrument">2순위: Instrument Serif + 마루 부리 (컨템포러리 세리프)</option>
-              <option value="ibm-plex">3순위: IBM Plex Sans + KR (공공 표지판·아카이브)</option>
-            </select>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.5rem;">
+          <div style="display: grid; grid-template-columns: 1fr 75px; gap: 0.5rem;">
             <div class="form-group">
-              <label>이슈 / 번호</label>
+              <label>시리즈</label>
+              <select id="select-series">
+                <option value="PASSING PLACES" selected>PASSING PLACES</option>
+                <option value="CITY LINES">CITY LINES</option>
+                <option value="WATERLINES">WATERLINES</option>
+                <option value="OPEN LAND">OPEN LAND</option>
+                <option value="POCKET NOTES">POCKET NOTES</option>
+                <option value="custom">직접 입력...</option>
+              </select>
+              <input type="text" id="input-series-custom" style="display: none; margin-top: 0.35rem;" placeholder="시리즈명 직접 입력">
+            </div>
+            <div class="form-group">
+              <label>No.</label>
               <input type="text" id="input-issue" value="01">
             </div>
-            <div class="form-group">
-              <label>작품 / 건축물 제목</label>
-              <input type="text" id="input-title" value="BASE LAYER HOTEL">
-            </div>
           </div>
 
           <div class="form-group">
-            <label>촬영 장소</label>
-            <input type="text" id="input-location" value="TOKYO · SHIBUYA">
+            <label>사진 제목</label>
+            <input type="text" id="input-title" value="KANAZAWA WATERWAY">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 95px; gap: 0.5rem;">
+            <div class="form-group">
+              <label>촬영 장소</label>
+              <input type="text" id="input-location" value="KANAZAWA · JAPAN">
+            </div>
+            <div class="form-group">
+              <label>촬영 연도/일시</label>
+              <input type="text" id="input-date" value="2026">
+            </div>
           </div>
 
           <!-- GPS Metadata Card -->
@@ -214,22 +238,17 @@
           <div id="gps-none-card" class="gps-none-card" style="display: none;">
             <span style="opacity: 0.7;">📍 위치 메타데이터 없음 (직접 입력 가능)</span>
           </div>
-
-          <div class="form-group">
-            <label>마스트헤드 상단 타이틀</label>
-            <input type="text" id="input-masthead" value="LINES IN TRANSIT">
-          </div>
         </div>
 
         <!-- 4. Instagram Caption Helper -->
         <div class="form-card">
           <div class="card-title">
             <span>인스타그램 캡션 복사</span>
-            <span style="font-size: 0.65rem; color: var(--text-muted);">에디토리얼 포스트</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">현장 관찰 저널</span>
           </div>
           <div class="form-group">
-            <label>현장 관찰 기록 (왜 이 순간 셔터를 눌렀는가?)</label>
-            <textarea id="input-caption-note" rows="2" style="width: 100%; resize: vertical; font-size: 0.75rem; background: var(--bg-input); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 4px; padding: 0.4rem; font-family: inherit;" placeholder="예: 호텔 창들이 정렬되어 있었지만, 택시 한 대가 들어오는 순간 사진의 균형이 완성됐다."></textarea>
+            <label>현장 관찰 기록</label>
+            <textarea id="input-caption-note" rows="3" style="width: 100%; resize: vertical; font-size: 0.75rem; background: var(--bg-input); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 4px; padding: 0.4rem; font-family: inherit; line-height: 1.4;" placeholder="💡 힌트: 무엇이 걸음을 멈추게 했나요? 빛과 날씨는 어땠나요? 사진 속에서 가장 먼저 보길 바라는 것은 무엇인가요?"></textarea>
           </div>
           <div class="form-group">
             <label>촬영 장비 프리셋</label>
@@ -251,20 +270,9 @@
       <!-- Tab 2: Export Panel -->
       <div id="tab-export" class="panel-content" role="tabpanel" aria-labelledby="tab-btn-export" style="display: none;">
         
-        <!-- Clean Photo Set Toggle -->
-        <div class="form-card" style="padding: 0.85rem 1rem;">
-          <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; margin: 0; user-select: none;">
-            <input type="checkbox" id="chk-include-clean" checked style="width: 18px; height: 18px; accent-color: var(--accent-blue);">
-            <div>
-              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">클린 사진 함께 생성</div>
-              <div style="font-size: 0.7rem; color: var(--text-muted);">세로 및 시네마틱 모드에서 텍스트 없는 순수 사진 슬라이드를 세트로 생성합니다. (심리스는 2장 유지)</div>
-            </div>
-          </label>
-        </div>
-
         <div class="form-card">
           <div class="card-title">
-            <span>인코딩 및 품질 설정</span>
+            <span>게시물 세트 만들기</span>
           </div>
           <div class="form-group">
             <label>압축 모드</label>
@@ -292,41 +300,40 @@
           </div>
         </div>
 
-        <!-- Single Slide Export (Vertical / Cinematic) -->
+        <!-- Single Slide Export (PHOTO / CHAPTER) -->
         <div id="export-single-section" class="form-card">
           <div class="card-title">
             <span>파일 내보내기</span>
           </div>
           <div style="margin-bottom: 0.85rem; font-size: 0.75rem; color: var(--text-secondary);">
-            저장 파일명: <code id="filename-preview" style="color: var(--accent-gold); font-size: 0.72rem;">LIT_ISSUE-001_TOKYO_COVER.jpg 외 1장</code>
+            저장 파일명: <code id="filename-preview" style="color: var(--accent-gold); font-size: 0.72rem;">LIT_PASSING_PLACES-001_KANAZAWA_PHOTO.jpg</code>
           </div>
           <div style="display: flex; flex-direction: column; gap: 0.5rem;">
             <button id="btn-download-single" class="btn-primary">
-              📥 커버 + 클린 세트 다운로드
+              📥 게시물 다운로드
             </button>
             <button id="btn-share-vertical-mobile" class="btn-secondary" style="font-size: 0.75rem; background: #059669; color: #fff; border-color: #059669;">
-              📱 두 장 한 번에 모바일 공유 (AirDrop / 저장)
+              📱 모바일 공유 (AirDrop / 저장)
             </button>
           </div>
         </div>
 
-
-        <!-- Multi-Slide Export (Seamless Swipe) -->
+        <!-- Multi-Slide Export (PANORAMA) -->
         <div id="export-seamless-section" class="form-card" style="display: none;">
           <div class="card-title">
-            <span>심리스 2분할 내보내기</span>
+            <span>파노라마 2분할 내보내기</span>
           </div>
           <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
-            모바일 Safari 등 브라우저 팝업 차단에 대비해 개별 저장 및 모바일 공유를 지원합니다.
+            가로 파노라마 사진을 좌우 2장으로 분할하여 저장합니다.
           </div>
           
           <div style="display: flex; flex-direction: column; gap: 0.6rem;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
               <button id="btn-download-s1" class="btn-secondary" style="font-size: 0.75rem;">
-                📥 1번 슬라이드 저장
+                📥 1번 슬라이드 (LEFT)
               </button>
               <button id="btn-download-s2" class="btn-secondary" style="font-size: 0.75rem;">
-                📥 2번 슬라이드 저장
+                📥 2번 슬라이드 (RIGHT)
               </button>
             </div>
             <button id="btn-share-mobile" class="btn-primary" style="background: #10b981;">
@@ -349,32 +356,37 @@
             <span>브랜드 원칙: 70 · 20 · 10</span>
           </div>
           <div style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.5rem;">
-            <strong style="color: var(--accent-gold);">70% 사진가 · 20% 도시 기록자 · 10% 디자인 브랜드</strong><br>
-            매 게시물에 표지를 반복하면 '디자인 계정'으로 오인됩니다. 커버는 시리즈의 챕터 개막에만 사용하세요.
+            <strong style="color: var(--accent-gold);">70% 사진 · 20% 기록 · 10% 브랜드</strong><br>
+            매 게시물에 표지를 반복하면 사진보다 템플릿이 먼저 보입니다. 커버는 시리즈의 챕터 개막에만 사용하세요.
           </div>
           <ul style="font-size: 0.73rem; color: var(--text-muted); line-height: 1.6; padding-left: 1rem; margin: 0;">
-            <li><strong>클린 캐러셀 (50%)</strong>: 1번 장 순수 사진으로 포트폴리오 증명</li>
-            <li><strong>촬영 과정 릴스 (25%)</strong>: 7~15초 현장 영상으로 비팔로워 탐색 유입</li>
-            <li><strong>매거진 챕터 (15%)</strong>: 새로운 도시·공간 개막 시 커버 활용</li>
-            <li><strong>iPod Pocket City (10%)</strong>: 후지 vs 아이팟 시선 비교 토론</li>
+            <li><strong>70% 사진</strong>: 클린 사진과 실제 포트폴리오 (PHOTO 중심)</li>
+            <li><strong>20% 기록</strong>: 장소, 촬영 과정 릴스, 현장 관찰 노트</li>
+            <li><strong>10% 브랜드</strong>: 챕터 커버(CHAPTER)와 브랜드 아이덴티티</li>
           </ul>
         </div>
 
-        <!-- 2. Carousel Strategy -->
+        <!-- 2. Recommended Order -->
         <div class="form-card">
           <div class="card-title">
-            <span>캐러셀 2가지 트랙</span>
+            <span>게시물 유형별 권장 순서</span>
           </div>
           <div style="margin-bottom: 0.6rem;">
-            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">① 일반 포트폴리오 (가장 기본)</div>
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">① 일반 사진 포트폴리오 (기본)</div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
-              [1] 가장 강한 클린 사진 ➔ [2] 다른 앵글 ➔ [3] 건축 디테일 ➔ [4] 사람/이동의 흔적 ➔ [5] 한 줄 관찰 기록
+              <strong>CLEAN</strong> (클린 대표작) ➔ <strong>DETAIL</strong> (디테일/줌인) ➔ <strong>CONTEXT</strong> (주변 풍경/사람)
+            </div>
+          </div>
+          <div style="margin-bottom: 0.6rem;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">② 새 시리즈 챕터 개막</div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
+              <strong>COVER</strong> (챕터 표지) ➔ <strong>CLEAN</strong> (순수 원본) ➔ <strong>DETAIL</strong> (세부 디테일)
             </div>
           </div>
           <div>
-            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">② 매거진 챕터 게시물 (시리즈 개막)</div>
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">③ 파노라마 와이드</div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
-              [1] LINES IN TRANSIT 커버 ➔ [2] 클린 원본 ➔ [3] 디테일 ➔ [4] 주변 환경 ➔ [5] 총평
+              <strong>LEFT</strong> (좌측 1번) ➔ <strong>RIGHT</strong> (우측 2번)
             </div>
           </div>
         </div>
@@ -385,9 +397,9 @@
             <span>프로필 5초 법칙 &amp; 상단 고정 3선</span>
           </div>
           <ol style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5; padding-left: 1.1rem; margin-bottom: 0.6rem;">
-            <li><strong>고정 1 (매니페스토)</strong>: 작가의 관점과 도시 아카이브 기준</li>
+            <li><strong>고정 1 (매니페스토)</strong>: 작가의 관점과 아카이브 기준 소개</li>
             <li><strong>고정 2 (포트폴리오)</strong>: 가장 완성도 높은 클린 사진 5선</li>
-            <li><strong>고정 3 (대표 챕터)</strong>: 대표 도시 또는 호텔 프로젝트 시리즈</li>
+            <li><strong>고정 3 (대표 챕터)</strong>: 대표 도시 또는 프로젝트 시리즈</li>
           </ol>
           <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
             💡 <strong>캡션 작성 팁</strong>: 시적인 미사여구보다 <em>"호텔 창들이 정렬되어 있었지만, 택시 한 대가 들어오는 순간 균형이 완성됐다"</em>처럼 <strong>왜 그 순간 셔터를 눌렀는지 보여주는 구체적 관찰</strong>이 훨씬 강력합니다.

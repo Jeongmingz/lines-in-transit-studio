@@ -53,12 +53,14 @@ def run_tests():
             page.goto(base_url)
             page.evaluate("""() => {
                 localStorage.setItem('lit_studio_state', JSON.stringify({
-                    mode: 'seamless',
-                    magazineTitle: 'PRESERVED MASTHEAD',
+                    mode: 'panorama',
+                    series: 'WATERLINES',
+                    seriesNo: '77',
                     issueNo: '77',
-                    photoTitle: 'MY PERSISTED HOTEL',
+                    photoTitle: 'MY PERSISTED WATERWAY',
                     location: 'PARIS LE MARAIS',
-                    selectedPresetId: 'fuji_classic_neg',
+                    captureDate: '2026',
+                    selectedPresetId: 'xt30ii_classic_neg',
                     customCameraTag: 'FUJIFILM X-T30 II · CLASSIC NEG SOOC',
                     showSafetyGuide: true,
                     zoom: 1.0,
@@ -77,23 +79,40 @@ def run_tests():
             title_val = page.input_value("#input-title")
             issue_val = page.input_value("#input-issue")
             loc_val = page.input_value("#input-location")
-            mode_btn_active = page.locator(".mode-btn[data-mode='seamless']").get_attribute("class")
+            date_val = page.input_value("#input-date")
+            series_val = page.input_value("#select-series")
+            mode_btn_active = page.locator(".mode-btn[data-mode='panorama']").get_attribute("class")
 
-            assert_true(title_val == "MY PERSISTED HOTEL", "LocalStorage photoTitle preserved during initial sample load")
-            assert_true(issue_val == "77", "LocalStorage issueNo preserved during initial sample load")
+            assert_true(title_val == "MY PERSISTED WATERWAY", "LocalStorage photoTitle preserved during initial sample load")
+            assert_true(issue_val == "77", "LocalStorage seriesNo preserved during initial sample load")
             assert_true(loc_val == "PARIS LE MARAIS", "LocalStorage location preserved during initial sample load")
-            assert_true("active" in (mode_btn_active or ""), "LocalStorage seamless mode preserved during initial sample load")
+            assert_true(date_val == "2026", "LocalStorage captureDate preserved during initial sample load")
+            assert_true(series_val == "WATERLINES", "LocalStorage series preserved during initial sample load")
+            assert_true("active" in (mode_btn_active or ""), "LocalStorage panorama mode preserved during initial sample load")
 
-            # Test 2: Mode switching does not corrupt UI
-            page.click(".mode-btn[data-mode='vertical']")
+            # Test 2: Mode switching and controls visibility
+            page.click(".mode-btn[data-mode='photo']")
             page.wait_for_timeout(300)
+            photo_fit_display = page.evaluate("() => getComputedStyle(document.getElementById('photo-fit-group')).display")
+            pano_overlay_display = page.evaluate("() => getComputedStyle(document.getElementById('panorama-overlay-group')).display")
             has_seamless_class = "mode-seamless" in (page.locator("#canvas-container").get_attribute("class") or "")
-            assert_true(not has_seamless_class, "Vertical mode cleanly removes mode-seamless container class")
+            assert_true(photo_fit_display != "none", "PHOTO mode displays framing fit/cover group")
+            assert_true(pano_overlay_display == "none", "PHOTO mode hides panorama overlay group")
+            assert_true(not has_seamless_class, "PHOTO mode cleanly removes mode-seamless container class")
 
-            page.click(".mode-btn[data-mode='seamless']")
+            page.click(".mode-btn[data-mode='chapter']")
             page.wait_for_timeout(300)
+            chapter_fit_display = page.evaluate("() => getComputedStyle(document.getElementById('photo-fit-group')).display")
+            btn_single_text = page.locator("#btn-download-single").inner_text()
+            assert_true(chapter_fit_display == "none", "CHAPTER mode hides photo framing group")
+            assert_true("챕터 세트 다운로드" in btn_single_text, "CHAPTER mode updates single download button label")
+
+            page.click(".mode-btn[data-mode='panorama']")
+            page.wait_for_timeout(300)
+            pano_overlay_after = page.evaluate("() => getComputedStyle(document.getElementById('panorama-overlay-group')).display")
             has_seamless_class = "mode-seamless" in (page.locator("#canvas-container").get_attribute("class") or "")
-            assert_true(has_seamless_class, "Seamless mode adds mode-seamless container class")
+            assert_true(pano_overlay_after != "none", "PANORAMA mode displays overlay toggle group")
+            assert_true(has_seamless_class, "PANORAMA mode adds mode-seamless container class")
 
             # Test 3: Non-GPS photo upload
             no_gps_file = os.path.join(BASE_DIR, "tests", "fixtures", "no_gps.jpg")
@@ -120,9 +139,6 @@ def run_tests():
 
             # Test 5: Export artifacts resolution & cleanliness
             export_info = page.evaluate("""async () => {
-                const app = window.appInstance || (window.__app__);
-                // If app is not global, inspect main canvas context and export method
-                const btn = document.getElementById('btn-download-single');
                 return {
                     canvasW: document.getElementById('main-canvas').width,
                     canvasH: document.getElementById('main-canvas').height,
@@ -131,67 +147,48 @@ def run_tests():
             }""")
             assert_true(export_info["hasOverlayInDom"], "Overlay exists in DOM decoupled from canvas pixels")
 
-            # Test 6: Typography dropdown interaction and persistence
-            default_typo = page.locator("#select-typography").input_value()
-            default_badge = page.locator("#badge-typography").inner_text()
-            assert_true(default_typo == "archivo", "Default typography preset is archivo")
-            assert_true("1순위" in default_badge, "Default typography badge displays 1순위")
-
-            # Switch to Instrument Serif (2순위)
-            page.select_option("#select-typography", "instrument")
-            page.wait_for_timeout(300)
-            inst_badge = page.locator("#badge-typography").inner_text()
-            assert_true("2순위" in inst_badge, "Selecting instrument preset updates badge to 2순위")
-
-            # Check localStorage persistence
-            saved_preset = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).typographyPreset")
-            assert_true(saved_preset == "instrument", "Typography preset persists to localStorage")
-
-            # Switch to IBM Plex (3순위)
-            page.select_option("#select-typography", "ibm-plex")
-            page.wait_for_timeout(300)
-            ibm_badge = page.locator("#badge-typography").inner_text()
-            assert_true("3순위" in ibm_badge, "Selecting ibm-plex preset updates badge to 3순위")
-
-            # Switch back to Archivo (1순위)
-            page.select_option("#select-typography", "archivo")
-            page.wait_for_timeout(300)
-            arch_saved = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).typographyPreset")
-            assert_true(arch_saved == "archivo", "Switching back to archivo persists properly")
-
-            # Test 7: Clean photo toggle & filename preview
-            page.click(".mode-btn[data-mode='vertical']")
+            # Test 6: Series selection & custom series input
+            page.click(".mode-btn[data-mode='photo']")
             page.wait_for_timeout(200)
-            page.click("#tab-btn-export")
+            page.select_option("#select-series", "CITY LINES")
             page.wait_for_timeout(200)
+            saved_series = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).series")
+            assert_true(saved_series == "CITY LINES", "Series dropdown selection persists to localStorage")
 
-            chk_clean = page.locator("#chk-include-clean")
-            assert_true(chk_clean.is_checked(), "Clean photo checkbox is checked by default")
-
-            preview_text = page.locator("#filename-preview").inner_text()
-            assert_true("외 1장 (클린 사진)" in preview_text, "Filename preview indicates clean photo slide inclusion by default")
-
-            # Uncheck clean photo
-            page.uncheck("#chk-include-clean")
+            page.select_option("#select-series", "custom")
             page.wait_for_timeout(200)
-            preview_uncheck = page.locator("#filename-preview").inner_text()
-            assert_true("외 1장" not in preview_uncheck, "Unchecking clean photo removes '외 1장' from filename preview")
-            clean_saved = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).includeCleanPhoto")
-            assert_true(clean_saved is False, "Unchecking clean photo persists false to localStorage")
+            custom_input_display = page.evaluate("() => getComputedStyle(document.getElementById('input-series-custom')).display")
+            assert_true(custom_input_display != "none", "Selecting 'custom' reveals custom series text input")
 
-            # Re-check clean photo
-            page.check("#chk-include-clean")
+            page.fill("#input-series-custom", "NORDIC ROADS")
             page.wait_for_timeout(200)
-            preview_recheck = page.locator("#filename-preview").inner_text()
-            assert_true("외 1장 (클린 사진)" in preview_recheck, "Re-checking clean photo restores '외 1장 (클린 사진)' to preview")
+            saved_custom = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).series")
+            assert_true(saved_custom == "NORDIC ROADS", "Custom series name persists to localStorage")
 
-            # Test 8: Instagram Caption copy button & observation note are in Studio tab
-            page.click("#tab-btn-studio")
+            # Test 7: Framing toggle (4:5 Crop vs Fit) in PHOTO mode
+            page.click("#btn-fit-letterbox")
             page.wait_for_timeout(200)
+            saved_fit = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).photoFitMode")
+            assert_true(saved_fit == "fit", "Clicking Fit sets photoFitMode to fit in localStorage")
+
+            page.click("#btn-fit-cover")
+            page.wait_for_timeout(200)
+            saved_cover = page.evaluate("() => JSON.parse(localStorage.getItem('lit_studio_state')).photoFitMode")
+            assert_true(saved_cover == "cover", "Clicking Cover sets photoFitMode to cover in localStorage")
+
+            # Test 8: Instagram Caption copy button & observation note in Studio tab
             caption_btn = page.locator("#btn-copy-caption")
             note_textarea = page.locator("#input-caption-note")
             assert_true(caption_btn.is_visible(), "Instagram caption copy button is visible in Studio tab")
             assert_true(note_textarea.is_visible(), "Instagram caption observation note textarea is visible in Studio tab")
+
+            # Test 9: 3 Genre sample buttons
+            page.click("#btn-sample-2")
+            page.wait_for_timeout(500)
+            sample2_title = page.input_value("#input-title")
+            sample2_series = page.input_value("#select-series")
+            assert_true(sample2_title == "AVENUE OF TREES", "Sample 2 (자연 풍경) loads correct title")
+            assert_true(sample2_series == "PASSING PLACES", "Sample 2 (자연 풍경) loads correct series")
 
             browser.close()
             print("\n[SUCCESS] ALL REAL BROWSER TESTS PASSED")

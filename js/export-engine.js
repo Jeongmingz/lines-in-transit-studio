@@ -92,13 +92,23 @@ export class ExportEngine {
   /**
    * Generate standardized file name
    */
-  static generateFileName(issueNo = '01', location = 'SCENE', suffix = 'COVER', ext = 'jpg') {
+  static generateFileName(issueNo = '01', location = 'SCENE', suffix = 'PHOTO', ext = 'jpg', series = '') {
     const cleanNo = String(issueNo).padStart(3, '0');
     const cleanLoc = location
       .replace(/[^a-zA-Z0-9가-힣]/g, '_')
       .replace(/_+/g, '_')
       .slice(0, 15)
       .toUpperCase() || 'SCENE';
+
+    if (series) {
+      const cleanSeries = series
+        .replace(/[^a-zA-Z0-9가-힣]/g, '_')
+        .replace(/_+/g, '_')
+        .slice(0, 15)
+        .toUpperCase() || 'JOURNAL';
+      return `LIT_${cleanSeries}-${cleanNo}_${cleanLoc}_${suffix}.${ext}`;
+    }
+
     return `LIT_ISSUE-${cleanNo}_${cleanLoc}_${suffix}.${ext}`;
   }
 

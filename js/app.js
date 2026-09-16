@@ -4,7 +4,7 @@
  * decoupled CSS guides, and reliable client-side export.
  */
 
-import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE, TYPOGRAPHY_PRESETS } from './presets.js';
+import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE, SERIES_PRESETS } from './presets.js';
 import { ImageLoader } from './image-loader.js';
 import { CanvasEngine } from './canvas-engine.js';
 import { ExportEngine } from './export-engine.js';
@@ -58,8 +58,14 @@ class App {
           zoom: typeof parsed.zoom === 'number' ? parsed.zoom : DEFAULT_STATE.zoom,
           panX: typeof parsed.panX === 'number' ? parsed.panX : DEFAULT_STATE.panX,
           panY: typeof parsed.panY === 'number' ? parsed.panY : DEFAULT_STATE.panY,
-          typographyPreset: parsed.typographyPreset || DEFAULT_STATE.typographyPreset,
-          includeCleanPhoto: (parsed.includeCleanPhoto !== undefined) ? parsed.includeCleanPhoto : DEFAULT_STATE.includeCleanPhoto
+          series: parsed.series || DEFAULT_STATE.series,
+          seriesNo: parsed.seriesNo || parsed.issueNo || DEFAULT_STATE.seriesNo,
+          photoTitle: parsed.photoTitle || DEFAULT_STATE.photoTitle,
+          location: parsed.location || DEFAULT_STATE.location,
+          captureDate: parsed.captureDate || DEFAULT_STATE.captureDate,
+          photoFitMode: parsed.photoFitMode || DEFAULT_STATE.photoFitMode,
+          panoramaOverlay: parsed.panoramaOverlay !== undefined ? parsed.panoramaOverlay : DEFAULT_STATE.panoramaOverlay,
+          mode: parsed.mode || DEFAULT_STATE.mode
         };
       }
     } catch (e) {
@@ -72,12 +78,15 @@ class App {
     try {
       const cleanState = {
         mode: this.state.mode,
-        typographyPreset: this.state.typographyPreset,
-        includeCleanPhoto: this.state.includeCleanPhoto,
-        magazineTitle: this.state.magazineTitle,
-        issueNo: this.state.issueNo,
+        series: this.state.series,
+        seriesNo: this.state.seriesNo || this.state.issueNo,
+        issueNo: this.state.seriesNo || this.state.issueNo,
         photoTitle: this.state.photoTitle,
         location: this.state.location,
+        captureDate: this.state.captureDate,
+        photoFitMode: this.state.photoFitMode,
+        panoramaOverlay: this.state.panoramaOverlay,
+        magazineTitle: this.state.magazineTitle,
         selectedPresetId: this.state.selectedPresetId,
         customCameraTag: this.state.customCameraTag,
         showSafetyGuide: this.state.showSafetyGuide,
@@ -95,43 +104,72 @@ class App {
 
   initPresetsUI() {
     const select = document.getElementById('select-preset');
-    select.innerHTML = '';
-    GEAR_PRESETS.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.label;
-      if (p.id === this.state.selectedPresetId) {
-        opt.selected = true;
+    if (select) {
+      select.innerHTML = '';
+      GEAR_PRESETS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.label;
+        if (p.id === this.state.selectedPresetId) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+    }
+
+    // Sync series preset UI
+    const seriesSelect = document.getElementById('select-series');
+    const seriesCustom = document.getElementById('input-series-custom');
+    if (seriesSelect) {
+      if (SERIES_PRESETS.includes(this.state.series)) {
+        seriesSelect.value = this.state.series;
+        if (seriesCustom) seriesCustom.style.display = 'none';
+      } else {
+        seriesSelect.value = 'custom';
+        if (seriesCustom) {
+          seriesCustom.style.display = 'block';
+          seriesCustom.value = this.state.series || '';
+        }
       }
-      select.appendChild(opt);
-    });
-
-    // Sync typography preset UI
-    const typoSelect = document.getElementById('select-typography');
-    const typoBadge = document.getElementById('badge-typography');
-    if (typoSelect) {
-      typoSelect.value = this.state.typographyPreset || 'archivo';
     }
-    const currentTypo = TYPOGRAPHY_PRESETS.find(p => p.id === (this.state.typographyPreset || 'archivo')) || TYPOGRAPHY_PRESETS[0];
-    if (typoBadge) {
-      typoBadge.textContent = currentTypo.badge;
-    }
-
-    // Sync clean photo toggle
-    const chkClean = document.getElementById('chk-include-clean');
-    if (chkClean) {
-      chkClean.checked = (this.state.includeCleanPhoto !== false);
-    }
-
 
     // Sync form inputs from state
-    document.getElementById('input-issue').value = this.state.issueNo;
-    document.getElementById('input-title').value = this.state.photoTitle;
-    document.getElementById('input-location').value = this.state.location;
-    document.getElementById('input-masthead').value = this.state.magazineTitle;
-    document.getElementById('input-camera-tag').value = this.state.customCameraTag;
-    document.getElementById('chk-safety').checked = this.state.showSafetyGuide;
-    document.getElementById('select-quality-mode').value = this.state.exportQualityMode;
+    const inputIssue = document.getElementById('input-issue');
+    if (inputIssue) inputIssue.value = this.state.seriesNo || this.state.issueNo || '01';
+
+    const inputTitle = document.getElementById('input-title');
+    if (inputTitle) inputTitle.value = this.state.photoTitle || '';
+
+    const inputLoc = document.getElementById('input-location');
+    if (inputLoc) inputLoc.value = this.state.location || '';
+
+    const inputDate = document.getElementById('input-date');
+    if (inputDate) inputDate.value = this.state.captureDate || '2026';
+
+    const inputCam = document.getElementById('input-camera-tag');
+    if (inputCam) inputCam.value = this.state.customCameraTag || '';
+
+    const chkSafety = document.getElementById('chk-safety');
+    if (chkSafety) chkSafety.checked = !!this.state.showSafetyGuide;
+
+    const selectQual = document.getElementById('select-quality-mode');
+    if (selectQual) selectQual.value = this.state.exportQualityMode;
+
+    // Framing buttons
+    const btnFitCover = document.getElementById('btn-fit-cover');
+    const btnFitLetterbox = document.getElementById('btn-fit-letterbox');
+    if (btnFitCover && btnFitLetterbox) {
+      btnFitCover.classList.toggle('active', this.state.photoFitMode !== 'fit');
+      btnFitLetterbox.classList.toggle('active', this.state.photoFitMode === 'fit');
+    }
+
+    // Panorama overlay checkbox
+    const chkPanoramaOverlay = document.getElementById('chk-panorama-overlay');
+    if (chkPanoramaOverlay) {
+      chkPanoramaOverlay.checked = !!this.state.panoramaOverlay;
+    }
+
+    this.updateModeUI(this.state.mode);
 
     // Target MB selection
     const targetMbSelect = document.getElementById('select-target-mb');
@@ -265,6 +303,15 @@ class App {
     });
 
     // Sample button clicks
+    [1, 2, 3].forEach(idx => {
+      const btn = document.getElementById(`btn-sample-${idx}`);
+      if (btn && SAMPLE_PHOTOS[idx - 1]) {
+        btn.addEventListener('click', () => {
+          this.loadSample(SAMPLE_PHOTOS[idx - 1]);
+        });
+      }
+    });
+
     document.querySelectorAll('.sample-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const sample = SAMPLE_PHOTOS.find(s => s.id === btn.dataset.sample);
@@ -272,60 +319,115 @@ class App {
       });
     });
 
+    // Series selection & custom series input
+    const seriesSelect = document.getElementById('select-series');
+    const seriesCustom = document.getElementById('input-series-custom');
+    if (seriesSelect) {
+      seriesSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+          if (seriesCustom) {
+            seriesCustom.style.display = 'block';
+            seriesCustom.focus();
+            this.state.series = seriesCustom.value || 'UNTITLED';
+          }
+        } else {
+          if (seriesCustom) seriesCustom.style.display = 'none';
+          this.state.series = e.target.value;
+        }
+        this.saveState();
+        this.updateFilenamePreview();
+        this.scheduleRender();
+      });
+    }
+
+    if (seriesCustom) {
+      seriesCustom.addEventListener('input', (e) => {
+        this.state.series = e.target.value || 'UNTITLED';
+        this.saveState();
+        this.updateFilenamePreview();
+        this.scheduleRender();
+      });
+    }
+
+    // Framing mode buttons (PHOTO mode)
+    const btnFitCover = document.getElementById('btn-fit-cover');
+    const btnFitLetterbox = document.getElementById('btn-fit-letterbox');
+    if (btnFitCover && btnFitLetterbox) {
+      btnFitCover.addEventListener('click', () => {
+        this.state.photoFitMode = 'cover';
+        btnFitCover.classList.add('active');
+        btnFitLetterbox.classList.remove('active');
+        this.saveState();
+        this.scheduleRender();
+      });
+      btnFitLetterbox.addEventListener('click', () => {
+        this.state.photoFitMode = 'fit';
+        btnFitLetterbox.classList.add('active');
+        btnFitCover.classList.remove('active');
+        this.saveState();
+        this.scheduleRender();
+      });
+    }
+
+    // Panorama overlay toggle (PANORAMA mode)
+    const chkPanoramaOverlay = document.getElementById('chk-panorama-overlay');
+    if (chkPanoramaOverlay) {
+      chkPanoramaOverlay.addEventListener('change', (e) => {
+        this.state.panoramaOverlay = e.target.checked;
+        this.saveState();
+        this.scheduleRender();
+      });
+    }
+
     // Input changes
-    const bindInput = (id, prop) => {
-      document.getElementById(id).addEventListener('input', (e) => {
+    const bindInput = (id, prop, extraSync) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', (e) => {
         this.state[prop] = e.target.value;
+        if (extraSync) extraSync(e.target.value);
         this.saveState();
         this.updateFilenamePreview();
         this.scheduleRender();
       });
     };
 
-    bindInput('input-issue', 'issueNo');
+    bindInput('input-issue', 'seriesNo', (val) => { this.state.issueNo = val; });
     bindInput('input-title', 'photoTitle');
     bindInput('input-location', 'location');
-    bindInput('input-masthead', 'magazineTitle');
+    bindInput('input-date', 'captureDate');
     bindInput('input-camera-tag', 'customCameraTag');
 
-    // Typography preset dropdown change
-    const typoSelect = document.getElementById('select-typography');
-    const typoBadge = document.getElementById('badge-typography');
-    if (typoSelect) {
-      typoSelect.addEventListener('change', (e) => {
-        this.state.typographyPreset = e.target.value;
-        const typo = TYPOGRAPHY_PRESETS.find(p => p.id === this.state.typographyPreset) || TYPOGRAPHY_PRESETS[0];
-        if (typoBadge) {
-          typoBadge.textContent = typo.badge;
+    // Preset dropdown change
+    const presetSelect = document.getElementById('select-preset');
+    if (presetSelect) {
+      presetSelect.addEventListener('change', (e) => {
+        this.state.selectedPresetId = e.target.value;
+        const preset = GEAR_PRESETS.find(p => p.id === e.target.value);
+        const cameraInput = document.getElementById('input-camera-tag');
+        if (preset && preset.id !== 'custom') {
+          this.state.customCameraTag = preset.label;
+          if (cameraInput) cameraInput.value = preset.label;
+        } else if (e.target.value === 'custom') {
+          if (cameraInput) {
+            cameraInput.focus();
+            cameraInput.select();
+          }
         }
         this.saveState();
         this.scheduleRender();
       });
     }
 
-    // Preset dropdown change
-
-    document.getElementById('select-preset').addEventListener('change', (e) => {
-      this.state.selectedPresetId = e.target.value;
-      const preset = GEAR_PRESETS.find(p => p.id === e.target.value);
-      const cameraInput = document.getElementById('input-camera-tag');
-      if (preset && preset.id !== 'custom') {
-        this.state.customCameraTag = preset.label;
-        cameraInput.value = preset.label;
-      } else if (e.target.value === 'custom') {
-        cameraInput.focus();
-        cameraInput.select();
-      }
-      this.saveState();
-      this.scheduleRender();
-    });
-
     // Safety guide toggle (Pure CSS overlay toggle)
-    document.getElementById('chk-safety').addEventListener('change', (e) => {
-      this.state.showSafetyGuide = e.target.checked;
-      this.syncGuideUI();
-      this.saveState();
-    });
+    const chkSafety = document.getElementById('chk-safety');
+    if (chkSafety) {
+      chkSafety.addEventListener('change', (e) => {
+        this.state.showSafetyGuide = e.target.checked;
+        this.syncGuideUI();
+        this.saveState();
+      });
+    }
 
     // Zoom Controls
     if (this.zoomSlider) {
@@ -352,29 +454,35 @@ class App {
     }
 
     // Reset view
-    document.getElementById('btn-reset-view').addEventListener('click', () => {
-      this.state.zoom = 1.0;
-      this.state.panX = 0;
-      this.state.panY = 0;
-      this.syncZoomUI();
-      this.saveState();
-      this.scheduleRender();
-      this.showToast('구도와 줌이 초기화되었습니다.');
-    });
+    const btnResetView = document.getElementById('btn-reset-view');
+    if (btnResetView) {
+      btnResetView.addEventListener('click', () => {
+        this.state.zoom = 1.0;
+        this.state.panX = 0;
+        this.state.panY = 0;
+        this.syncZoomUI();
+        this.saveState();
+        this.scheduleRender();
+        this.showToast('구도와 줌이 초기화되었습니다.');
+      });
+    }
 
     // Canvas Pan & Pinch Zoom Interactions
     this.setupCanvasInteractions();
 
     // Export Controls
-    document.getElementById('select-quality-mode').addEventListener('change', (e) => {
-      this.state.exportQualityMode = e.target.value;
-      const targetMbGroup = document.getElementById('target-mb-group');
-      if (targetMbGroup) {
-        targetMbGroup.style.display = (e.target.value === 'auto') ? 'block' : 'none';
-      }
-      this.saveState();
-      this.updateFilenamePreview();
-    });
+    const selectQualityMode = document.getElementById('select-quality-mode');
+    if (selectQualityMode) {
+      selectQualityMode.addEventListener('change', (e) => {
+        this.state.exportQualityMode = e.target.value;
+        const targetMbGroup = document.getElementById('target-mb-group');
+        if (targetMbGroup) {
+          targetMbGroup.style.display = (e.target.value === 'auto') ? 'block' : 'none';
+        }
+        this.saveState();
+        this.updateFilenamePreview();
+      });
+    }
 
     const targetMbSelect = document.getElementById('select-target-mb');
     const targetMbInput = document.getElementById('input-target-mb');
@@ -406,17 +514,7 @@ class App {
       this.chkAppendCoords.addEventListener('change', () => this.handleAppendCoordsToggle());
     }
 
-    // Clean Photo toggle
-    const chkClean = document.getElementById('chk-include-clean');
-    if (chkClean) {
-      chkClean.addEventListener('change', (e) => {
-        this.state.includeCleanPhoto = e.target.checked;
-        this.saveState();
-        this.updateFilenamePreview();
-      });
-    }
-
-    // Instagram Caption clipboard copy
+    // Instagram Caption clipboard copy (Observation-based journal notes)
     const btnCopyCaption = document.getElementById('btn-copy-caption');
     if (btnCopyCaption) {
       btnCopyCaption.addEventListener('click', () => {
@@ -428,36 +526,59 @@ class App {
           lines.push(note);
           lines.push('');
         }
-        lines.push(this.state.magazineTitle || 'LINES IN TRANSIT');
-        lines.push(`${this.state.photoTitle || 'UNTITLED'}` + (this.state.issueNo ? ` · ISSUE ${this.state.issueNo}` : ''));
+        lines.push('LINES IN TRANSIT');
+        const seriesName = this.state.series || 'PASSING PLACES';
+        const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
+        lines.push(`${seriesName} · NO. ${seriesNo}`);
+        if (this.state.photoTitle) {
+          lines.push(`Title: ${this.state.photoTitle}`);
+        }
         if (this.state.location) {
-          lines.push(`📍 ${this.state.location}`);
+          lines.push(`Location: ${this.state.location}`);
+        }
+        if (this.state.captureDate) {
+          lines.push(`Date: ${this.state.captureDate}`);
         }
         if (this.state.customCameraTag) {
-          lines.push(`📷 ${this.state.customCameraTag}`);
+          lines.push(`Camera: ${this.state.customCameraTag}`);
         }
         lines.push('');
-        lines.push('#linesintransit #streetphotography #fujifilm #architecture #urbanarchive');
+        const seriesTag = seriesName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        lines.push(`#linesintransit #${seriesTag} #photography #journal #filmphotography`);
 
         const caption = lines.join('\n');
         navigator.clipboard.writeText(caption).then(() => {
-          this.showToast('인스타그램 캡션이 클립보드에 복사되었습니다!');
+          this.showToast('인스타그램 저널 캡션이 복사되었습니다!');
         }).catch(() => {
           this.showToast('캡션 복사에 실패했습니다.');
         });
       });
     }
 
-    document.getElementById('btn-download-single').addEventListener('click', () => this.exportSingle());
+    const btnDownloadSingle = document.getElementById('btn-download-single');
+    if (btnDownloadSingle) {
+      btnDownloadSingle.addEventListener('click', () => this.exportSingle());
+    }
     const btnShareVertical = document.getElementById('btn-share-vertical-mobile');
     if (btnShareVertical) {
       btnShareVertical.addEventListener('click', () => this.shareVerticalMobile());
     }
-    document.getElementById('btn-download-s1').addEventListener('click', () => this.exportSeamlessSlide(1));
-
-    document.getElementById('btn-download-s2').addEventListener('click', () => this.exportSeamlessSlide(2));
-    document.getElementById('btn-share-mobile').addEventListener('click', () => this.shareSeamlessMobile());
-    document.getElementById('btn-download-zip').addEventListener('click', () => this.exportSeamlessZip());
+    const btnDownloadS1 = document.getElementById('btn-download-s1');
+    if (btnDownloadS1) {
+      btnDownloadS1.addEventListener('click', () => this.exportSeamlessSlide(1));
+    }
+    const btnDownloadS2 = document.getElementById('btn-download-s2');
+    if (btnDownloadS2) {
+      btnDownloadS2.addEventListener('click', () => this.exportSeamlessSlide(2));
+    }
+    const btnShareMobile = document.getElementById('btn-share-mobile');
+    if (btnShareMobile) {
+      btnShareMobile.addEventListener('click', () => this.shareSeamlessMobile());
+    }
+    const btnDownloadZip = document.getElementById('btn-download-zip');
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', () => this.exportSeamlessZip());
+    }
   }
 
   setupCanvasInteractions() {
@@ -563,30 +684,61 @@ class App {
       btn.classList.toggle('active', btn.dataset.mode === mode);
     });
 
-    const isSeamless = (mode === 'seamless');
-    if (isSeamless) {
+    const isPanorama = (mode === 'panorama');
+    if (isPanorama) {
       this.canvasWrapper.classList.add('mode-seamless');
     } else {
       this.canvasWrapper.classList.remove('mode-seamless');
     }
 
-    document.getElementById('export-single-section').style.display = isSeamless ? 'none' : 'block';
-    document.getElementById('export-seamless-section').style.display = isSeamless ? 'block' : 'none';
+    const photoFitGroup = document.getElementById('photo-fit-group');
+    if (photoFitGroup) {
+      photoFitGroup.style.display = (mode === 'photo') ? 'flex' : 'none';
+    }
+
+    const panoramaOverlayGroup = document.getElementById('panorama-overlay-group');
+    if (panoramaOverlayGroup) {
+      panoramaOverlayGroup.style.display = (mode === 'panorama') ? 'block' : 'none';
+    }
+
+    const exportSingleSection = document.getElementById('export-single-section');
+    if (exportSingleSection) {
+      exportSingleSection.style.display = isPanorama ? 'none' : 'block';
+    }
+
+    const exportSeamlessSection = document.getElementById('export-seamless-section');
+    if (exportSeamlessSection) {
+      exportSeamlessSection.style.display = isPanorama ? 'block' : 'none';
+    }
+
+    const btnDownloadSingle = document.getElementById('btn-download-single');
+    if (btnDownloadSingle) {
+      if (mode === 'chapter') {
+        btnDownloadSingle.textContent = '📥 챕터 세트 다운로드 (표지+클린 2장)';
+      } else {
+        btnDownloadSingle.textContent = '📥 클린 사진 다운로드';
+      }
+    }
 
     this.updateFilenamePreview();
   }
 
   updateFilenamePreview() {
     const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
-    if (this.state.mode === 'seamless') {
-      this.filenamePreview.textContent = `${ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext)} 외 1장`;
+    const series = this.state.series || 'PASSING PLACES';
+    const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
+    const location = this.state.location || 'SCENE';
+
+    if (!this.filenamePreview) return;
+
+    if (this.state.mode === 'panorama') {
+      const f1 = ExportEngine.generateFileName(seriesNo, location, '01_LEFT', ext, series);
+      this.filenamePreview.textContent = `${f1} 외 1장 (02_RIGHT)`;
+    } else if (this.state.mode === 'chapter') {
+      const f1 = ExportEngine.generateFileName(seriesNo, location, '01_COVER', ext, series);
+      this.filenamePreview.textContent = `${f1} 외 1장 (02_CLEAN)`;
     } else {
-      const tag = (this.state.mode === 'cinematic') ? 'CINEMATIC' : 'COVER';
-      if (this.state.includeCleanPhoto) {
-        this.filenamePreview.textContent = `${ExportEngine.generateFileName(this.state.issueNo, this.state.location, tag, ext)} 외 1장 (클린 사진)`;
-      } else {
-        this.filenamePreview.textContent = ExportEngine.generateFileName(this.state.issueNo, this.state.location, tag, ext);
-      }
+      this.filenamePreview.textContent = ExportEngine.generateFileName(seriesNo, location, '01_PHOTO', ext, series);
     }
   }
 
@@ -786,16 +938,21 @@ class App {
       if (requestId !== this.imageLoadRequestId) return;
 
       this.currentImage = image;
-      this.state.mode = sample.mode;
-      this.state.issueNo = sample.issueNo;
-      this.state.photoTitle = sample.title;
-      this.state.location = sample.location;
-      this.state.selectedPresetId = sample.presetId;
+      this.state.mode = sample.mode || 'photo';
+      this.state.series = sample.series || 'PASSING PLACES';
+      this.state.seriesNo = sample.seriesNo || sample.issueNo || '01';
+      this.state.issueNo = this.state.seriesNo;
+      this.state.photoTitle = sample.title || '';
+      this.state.location = sample.location || '';
+      this.state.captureDate = sample.captureDate || '2026';
+      this.state.selectedPresetId = sample.presetId || 'fuji-classic-chrome';
+      this.state.photoFitMode = sample.photoFitMode || 'cover';
+      this.state.panoramaOverlay = !!sample.panoramaOverlay;
       this.state.panX = 0;
       this.state.panY = 0;
       this.state.zoom = 1.0;
 
-      const preset = GEAR_PRESETS.find(p => p.id === sample.presetId);
+      const preset = GEAR_PRESETS.find(p => p.id === this.state.selectedPresetId);
       if (preset) {
         this.state.customCameraTag = preset.label;
       }
@@ -834,10 +991,12 @@ class App {
   async render() {
     await this.canvasEngine.renderToCanvas(this.mainCanvas, this.currentImage, this.state, 0.5);
 
-    if (this.state.mode === 'seamless') {
-      this.liveInfo.textContent = '2160 × 1350 px (2-Slide 심리스)';
+    if (this.state.mode === 'panorama' || this.state.mode === 'seamless') {
+      this.liveInfo.textContent = '2160 × 1350 px (가로 2분할 파노라마)';
+    } else if (this.state.mode === 'chapter') {
+      this.liveInfo.textContent = '1080 × 1350 px (표지 + 클린 2장 세트)';
     } else {
-      this.liveInfo.textContent = '1080 × 1350 px (4:5 인스타 규격)';
+      this.liveInfo.textContent = '1080 × 1350 px (4:5 클린 포스트)';
     }
   }
 
@@ -890,15 +1049,17 @@ class App {
     try {
       const artifacts = await this.getExportArtifacts();
       const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
+      const series = this.state.series || 'PASSING PLACES';
+      const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
 
       if (artifacts.isMultiSlide) {
-        // Slide 1 (Cover / Cinematic)
+        // Slide 1 (Cover)
         const res1 = await ExportEngine.encodeCanvas(
           artifacts.slide1,
           this.state.exportQualityMode,
           this.state.autoFitTargetMB
         );
-        const file1Name = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+        const file1Name = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag1 || '01_COVER', ext, series);
         ExportEngine.downloadBlob(res1.blob, file1Name);
 
         // Slide 2 (Clean photo)
@@ -908,19 +1069,19 @@ class App {
           this.state.exportQualityMode,
           this.state.autoFitTargetMB
         );
-        const file2Name = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag2 || 'CLEAN', ext);
+        const file2Name = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag2 || '02_CLEAN', ext, series);
         ExportEngine.downloadBlob(res2.blob, file2Name);
 
-        this.showToast(`커버와 클린 사진 2장 저장 완료! (${res1.sizeFormatted}, ${res2.sizeFormatted})`);
+        this.showToast(`챕터 표지와 클린 사진 2장 저장 완료! (${res1.sizeFormatted}, ${res2.sizeFormatted})`);
       } else {
         const res = await ExportEngine.encodeCanvas(
           artifacts.canvas,
           this.state.exportQualityMode,
           this.state.autoFitTargetMB
         );
-        const filename = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+        const filename = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag1 || '01_PHOTO', ext, series);
         ExportEngine.downloadBlob(res.blob, filename);
-        this.formatExportToast(res, '저장 완료!');
+        this.formatExportToast(res, '클린 사진 저장 완료!');
       }
     } catch (err) {
       this.showToast(`저장 실패: ${err.message}`);
@@ -943,13 +1104,15 @@ class App {
       const artifacts = await this.getExportArtifacts();
       const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
       const mime = (this.state.exportQualityMode === 'png') ? 'image/png' : 'image/jpeg';
+      const series = this.state.series || 'PASSING PLACES';
+      const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
 
       const res1 = await ExportEngine.encodeCanvas(
         artifacts.isMultiSlide ? artifacts.slide1 : artifacts.canvas,
         this.state.exportQualityMode,
         this.state.autoFitTargetMB
       );
-      const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag1 || 'COVER', ext);
+      const name1 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag1 || '01_PHOTO', ext, series);
       const file1 = new File([res1.blob], name1, { type: mime });
 
       const files = [file1];
@@ -960,12 +1123,12 @@ class App {
           this.state.exportQualityMode,
           this.state.autoFitTargetMB
         );
-        const name2 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, artifacts.tag2 || 'CLEAN', ext);
+        const name2 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag2 || '02_CLEAN', ext, series);
         const file2 = new File([res2.blob], name2, { type: mime });
         files.push(file2);
       }
 
-      const shareRes = await ExportEngine.shareFiles(files, `${this.state.magazineTitle} - ${this.state.photoTitle}`);
+      const shareRes = await ExportEngine.shareFiles(files, `LINES IN TRANSIT - ${series} No.${seriesNo}`);
       if (shareRes.success) {
         this.showToast('공유 완료!');
       } else if (shareRes.notSupported) {
@@ -978,7 +1141,6 @@ class App {
       this.setExportButtonsDisabled(false);
     }
   }
-
 
   async exportSeamlessSlide(slideNum) {
     if (this.isExporting) {
@@ -1000,15 +1162,19 @@ class App {
       );
 
       const ext = res.format.toLowerCase();
+      const series = this.state.series || 'PASSING PLACES';
+      const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
+      const tag = (slideNum === 1) ? '01_LEFT' : '02_RIGHT';
       const filename = ExportEngine.generateFileName(
-        this.state.issueNo,
+        seriesNo,
         this.state.location,
-        `SLIDE-${String(slideNum).padStart(2, '0')}`,
-        ext
+        tag,
+        ext,
+        series
       );
 
       ExportEngine.downloadBlob(res.blob, filename);
-      this.formatExportToast(res, `슬라이드 ${slideNum} 저장 완료!`);
+      this.formatExportToast(res, `슬라이드 ${slideNum} (${tag}) 저장 완료!`);
     } catch (err) {
       this.showToast(`저장 실패: ${err.message}`);
     } finally {
@@ -1028,15 +1194,17 @@ class App {
 
     try {
       const artifacts = await this.getExportArtifacts();
+      const series = this.state.series || 'PASSING PLACES';
+      const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
 
       const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
       const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
       const ext = res1.format.toLowerCase();
-      const f1 = new File([res1.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext), { type: res1.blob.type });
-      const f2 = new File([res2.blob], ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext), { type: res2.blob.type });
+      const f1 = new File([res1.blob], ExportEngine.generateFileName(seriesNo, this.state.location, '01_LEFT', ext, series), { type: res1.blob.type });
+      const f2 = new File([res2.blob], ExportEngine.generateFileName(seriesNo, this.state.location, '02_RIGHT', ext, series), { type: res2.blob.type });
 
-      const shareRes = await ExportEngine.shareFiles([f1, f2], `Lines in Transit Issue ${this.state.issueNo}`);
+      const shareRes = await ExportEngine.shareFiles([f1, f2], `LINES IN TRANSIT - ${series} No.${seriesNo}`);
       if (shareRes.success) {
         this.showToast('공유 완료!');
       } else if (shareRes.notSupported) {
@@ -1065,20 +1233,23 @@ class App {
 
     try {
       const artifacts = await this.getExportArtifacts();
+      const series = this.state.series || 'PASSING PLACES';
+      const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
 
       const res1 = await ExportEngine.encodeCanvas(artifacts.slide1, this.state.exportQualityMode, this.state.autoFitTargetMB);
       const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
 
       const ext = res1.format.toLowerCase();
-      const name1 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-01', ext);
-      const name2 = ExportEngine.generateFileName(this.state.issueNo, this.state.location, 'SLIDE-02', ext);
+      const name1 = ExportEngine.generateFileName(seriesNo, this.state.location, '01_LEFT', ext, series);
+      const name2 = ExportEngine.generateFileName(seriesNo, this.state.location, '02_RIGHT', ext, series);
 
       const zip = new JSZip();
       zip.file(name1, res1.blob);
       zip.file(name2, res2.blob);
 
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const zipName = `LIT_ISSUE-${String(this.state.issueNo).padStart(3, '0')}_PANORAMA.zip`;
+      const cleanSeries = series.replace(/[^a-zA-Z0-9가-힣]/g, '_').toUpperCase() || 'JOURNAL';
+      const zipName = `LIT_${cleanSeries}-${String(seriesNo).padStart(3, '0')}_PANORAMA.zip`;
       ExportEngine.downloadBlob(zipBlob, zipName);
       this.showToast('ZIP 다운로드 완료!');
     } catch (err) {
