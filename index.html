@@ -145,9 +145,23 @@
           <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="사진 업로드: 사진 파일을 드래그하거나 엔터 키를 눌러 선택하세요">
             <div class="dropzone-icon">📷</div>
             <div class="dropzone-text">오늘 기록할 사진을 불러오세요</div>
-            <div class="dropzone-sub">※ 클릭하거나 사진 파일을 드래그하여 업로드</div>
-            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" style="display: none;">
+            <div class="dropzone-sub">여러 장을 함께 선택하면 캐러셀로 구성됩니다</div>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" multiple style="display: none;">
           </div>
+
+          <div id="carousel-editor" class="carousel-editor" hidden>
+            <div class="carousel-heading">
+              <span id="carousel-count">사진 1장</span>
+              <span>사진을 선택한 뒤 화살표로 순서를 정하세요</span>
+            </div>
+            <div id="carousel-list" class="carousel-list" aria-label="캐러셀 사진 순서"></div>
+          </div>
+
+          <div class="draft-actions">
+            <button id="btn-save-draft" class="btn-secondary btn-sm" type="button">💾 현재 작업 저장</button>
+            <button id="btn-clear-draft" class="btn-secondary btn-sm" type="button">저장된 작업 삭제</button>
+          </div>
+          <div id="draft-status" class="draft-status">사진과 구도는 이 브라우저에만 저장됩니다.</div>
           
           <div style="margin-top: 0.65rem;">
             <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem;">샘플 사진 테스트:</div>
@@ -205,6 +219,12 @@
             <input type="text" id="input-title" value="KANAZAWA WATERWAY">
           </div>
 
+          <div id="group-typography" class="form-group" style="margin-bottom: 0.65rem;">
+            <label for="select-typography">CHAPTER 글꼴 조합</label>
+            <select id="select-typography" aria-describedby="typography-description"></select>
+            <div id="typography-description" class="field-help"></div>
+          </div>
+
           <!-- Location & Date -->
           <div id="group-location-date" style="display: grid; grid-template-columns: 1fr 95px; gap: 0.5rem; margin-bottom: 0.65rem;">
             <div class="form-group" style="margin-bottom: 0;">
@@ -228,14 +248,10 @@
               <button id="btn-fetch-address" class="btn-secondary btn-sm" type="button">
                 🔍 주소 자동 찾기
               </button>
-              <label class="gps-append-label" title="장소명 뒤에 도분초(DMS) 좌표를 함께 표기합니다">
-                <input type="checkbox" id="chk-append-coords">
-                <span>좌표 병기</span>
-              </label>
             </div>
             <div id="gps-status-info" class="gps-status-info"></div>
             <div class="gps-privacy-note">
-              ※ 클릭 시에만 좌표가 역지오코딩 서비스로 전송되며 사진 원본은 전송되지 않습니다.
+              ※ 클릭 시에만 좌표가 주소 조회에 사용됩니다. 공개 캡션에는 도시·지역명만 적용하며 정확한 좌표는 넣지 않습니다.
             </div>
             <div class="gps-attribution">
               Address data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>

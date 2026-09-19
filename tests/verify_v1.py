@@ -85,7 +85,10 @@ def check_html_and_css():
     assert_true("gps-card" in html_content and "btn-fetch-address" in html_content, "GPS card and reverse geocode button present in HTML")
     assert_true('id="select-series"' in html_content, "Series selection dropdown present in index.html")
     assert_true('id="input-date"' in html_content, "Capture date input present in index.html")
-    assert_true('id="select-typography"' not in html_content, "Typography preset dropdown removed from index.html (unified brand)")
+    assert_true('id="select-typography"' in html_content, "Typography preset dropdown present for CHAPTER layouts")
+    assert_true('multiple' in html_content and 'id="carousel-list"' in html_content, "Multi-photo carousel controls present")
+    assert_true('id="btn-save-draft"' in html_content, "Browser-local draft save control present")
+    assert_true('id="chk-append-coords"' not in html_content, "Public exact-coordinate caption option removed")
     assert_true('id="chk-include-clean"' not in html_content, "Clean photo toggle checkbox removed from index.html")
     assert_true('id="btn-copy-caption"' in html_content, "Instagram caption copy button present in index.html")
     assert_true('id="input-caption-note"' in html_content, "Observation note textarea present in index.html")
@@ -111,6 +114,9 @@ def check_app_controller():
     assert_true("handleReverseGeocode" in content, "handleReverseGeocode method present")
     assert_true("extractGps" in content, "extractGps method present")
     assert_true("select-series" in content, "select-series event handling present in app.js")
+    assert_true("handleFiles" in content and "exportCarouselZip" in content, "Multi-photo carousel loading and ZIP export implemented")
+    assert_true("DraftStore" in content and "saveDraft" in content, "IndexedDB draft persistence integrated")
+    assert_true("select-typography" in content, "Typography preset switching integrated")
 
 def check_api_and_vendor():
     exifr_path = os.path.join(BASE_DIR, 'vendor', 'exifr.mini.umd.js')

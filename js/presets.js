@@ -89,37 +89,76 @@ export const SAMPLE_PHOTOS = [
  * Unified Brand Typography Configuration
  * Consistent, refined identity: Archivo for header/series, Pretendard for title & metadata.
  */
-export const BRAND_TYPOGRAPHY = {
-  mastheadFont: "'Archivo', -apple-system, sans-serif",
-  mastheadWeight: '800',
-  mastheadSpacing: '-0.035em',
-  seriesFont: "'Archivo', 'Pretendard', sans-serif",
-  seriesWeight: '700',
-  seriesSpacing: '0.06em',
-  titleFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-  titleWeight: '600',
-  titleSpacing: '-0.01em',
-  locationFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-  locationWeight: '500',
-  locationSpacing: '0.02em',
-  dateFont: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-  dateWeight: '400',
-  dateSpacing: '0.04em',
-  monoFont: "'IBM Plex Mono', 'Pretendard', monospace"
-};
+export const TYPOGRAPHY_PRESETS = [
+  {
+    id: 'editorial',
+    name: 'Editorial — Archivo + Pretendard',
+    description: '단단한 마스트헤드와 차분한 본문',
+    mastheadFont: "'Archivo', 'Pretendard', sans-serif",
+    mastheadWeight: '800',
+    mastheadSpacing: '-0.035em',
+    seriesFont: "'Archivo', 'Pretendard', sans-serif",
+    seriesWeight: '700',
+    seriesSpacing: '0.06em',
+    titleFont: "'Pretendard', sans-serif",
+    titleWeight: '600',
+    titleSpacing: '-0.01em',
+    locationFont: "'Pretendard', sans-serif",
+    locationWeight: '500',
+    locationSpacing: '0.02em'
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal — Pretendard',
+    description: '한국어와 영문 모두 절제된 산세리프',
+    mastheadFont: "'Pretendard', sans-serif",
+    mastheadWeight: '700',
+    mastheadSpacing: '-0.02em',
+    seriesFont: "'Pretendard', sans-serif",
+    seriesWeight: '600',
+    seriesSpacing: '0.08em',
+    titleFont: "'Pretendard', sans-serif",
+    titleWeight: '500',
+    titleSpacing: '-0.015em',
+    locationFont: "'Pretendard', sans-serif",
+    locationWeight: '400',
+    locationSpacing: '0.035em'
+  },
+  {
+    id: 'archive',
+    name: 'Archive — IBM Plex Mono + Archivo',
+    description: '이동 기록과 데이터 라벨의 인상',
+    mastheadFont: "'Archivo', 'Pretendard', sans-serif",
+    mastheadWeight: '700',
+    mastheadSpacing: '-0.02em',
+    seriesFont: "'IBM Plex Mono', 'Pretendard', monospace",
+    seriesWeight: '500',
+    seriesSpacing: '0.05em',
+    titleFont: "'Archivo', 'Pretendard', sans-serif",
+    titleWeight: '600',
+    titleSpacing: '-0.015em',
+    locationFont: "'IBM Plex Mono', 'Pretendard', monospace",
+    locationWeight: '500',
+    locationSpacing: '0.02em'
+  }
+];
+
+export const BRAND_TYPOGRAPHY = TYPOGRAPHY_PRESETS[0];
 
 export const DEFAULT_STATE = {
   mode: 'photo', // 'photo' (clean single), 'chapter' (cover + clean), 'panorama' (2-slide 2160x1350)
   series: 'PASSING PLACES',
   seriesNo: '01',
-  photoTitle: 'KANAZAWA WATERWAY',
-  location: 'KANAZAWA · JAPAN',
-  captureDate: '2026',
+  photoTitle: '',
+  location: '',
+  captureDate: '',
   magazineTitle: 'LINES IN TRANSIT',
   photoFitMode: 'cover', // 'cover' (4:5 crop) or 'fit' (aspect ratio preserved / letterboxed)
   panoramaOverlay: false, // default clean photo for panorama
-  selectedPresetId: 'xt30ii_classic_chrome',
-  customCameraTag: 'FUJIFILM X-T30 II · CLASSIC CHROME SOOC',
+  typographyPreset: 'editorial',
+  captionNote: '',
+  selectedPresetId: 'custom',
+  customCameraTag: '',
   showSafetyGuide: false,
   zoom: 1.0,
   panX: 0,

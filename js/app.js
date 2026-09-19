@@ -4,10 +4,11 @@
  * decoupled CSS guides, and reliable client-side export.
  */
 
-import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE, SERIES_PRESETS } from './presets.js';
+import { GEAR_PRESETS, SAMPLE_PHOTOS, DEFAULT_STATE, SERIES_PRESETS, TYPOGRAPHY_PRESETS } from './presets.js';
 import { ImageLoader } from './image-loader.js';
 import { CanvasEngine } from './canvas-engine.js';
 import { ExportEngine } from './export-engine.js';
+import { DraftStore } from './draft-store.js';
 
 class App {
   constructor() {
@@ -19,6 +20,8 @@ class App {
     this.isExporting = false;
     this.imageLoadRequestId = 0;
     this.currentGps = null;
+    this.carouselItems = [];
+    this.activeCarouselIndex = -1;
 
     // DOM Elements
     this.mainCanvas = document.getElementById('main-canvas');
@@ -35,12 +38,11 @@ class App {
     this.gpsCoordsText = document.getElementById('gps-coords-text');
     this.gpsDmsText = document.getElementById('gps-dms-text');
     this.btnFetchAddress = document.getElementById('btn-fetch-address');
-    this.chkAppendCoords = document.getElementById('chk-append-coords');
     this.gpsStatusInfo = document.getElementById('gps-status-info');
 
     this.initPresetsUI();
     this.initEventListeners();
-    this.loadInitialImage();
+    this.loadInitialDraftOrImage();
     window.__app_instance__ = this;
   }
 
@@ -66,6 +68,8 @@ class App {
           captureDate: parsed.captureDate || DEFAULT_STATE.captureDate,
           photoFitMode: parsed.photoFitMode || DEFAULT_STATE.photoFitMode,
           panoramaOverlay: parsed.panoramaOverlay !== undefined ? parsed.panoramaOverlay : DEFAULT_STATE.panoramaOverlay,
+          typographyPreset: parsed.typographyPreset || DEFAULT_STATE.typographyPreset,
+          captionNote: parsed.captionNote || '',
           mode: parsed.mode || DEFAULT_STATE.mode
         };
       }
@@ -87,6 +91,8 @@ class App {
         captureDate: this.state.captureDate,
         photoFitMode: this.state.photoFitMode,
         panoramaOverlay: this.state.panoramaOverlay,
+        typographyPreset: this.state.typographyPreset,
+        captionNote: this.state.captionNote,
         magazineTitle: this.state.magazineTitle,
         selectedPresetId: this.state.selectedPresetId,
         customCameraTag: this.state.customCameraTag,
@@ -145,10 +151,26 @@ class App {
     if (inputLoc) inputLoc.value = this.state.location || '';
 
     const inputDate = document.getElementById('input-date');
-    if (inputDate) inputDate.value = this.state.captureDate || '2026';
+    if (inputDate) inputDate.value = this.state.captureDate || '';
 
     const inputCam = document.getElementById('input-camera-tag');
     if (inputCam) inputCam.value = this.state.customCameraTag || '';
+
+    const captionNote = document.getElementById('input-caption-note');
+    if (captionNote) captionNote.value = this.state.captionNote || '';
+
+    const typographySelect = document.getElementById('select-typography');
+    if (typographySelect) {
+      typographySelect.innerHTML = '';
+      TYPOGRAPHY_PRESETS.forEach(preset => {
+        const option = document.createElement('option');
+        option.value = preset.id;
+        option.textContent = preset.name;
+        option.selected = preset.id === this.state.typographyPreset;
+        typographySelect.appendChild(option);
+      });
+      this.updateTypographyDescription();
+    }
 
     const chkSafety = document.getElementById('chk-safety');
     if (chkSafety) chkSafety.checked = !!this.state.showSafetyGuide;
@@ -205,9 +227,107 @@ class App {
     if (this.zoomBadge) this.zoomBadge.textContent = `${this.state.zoom.toFixed(1)}x`;
   }
 
+  updateTypographyDescription() {
+    const preset = TYPOGRAPHY_PRESETS.find(item => item.id === this.state.typographyPreset) || TYPOGRAPHY_PRESETS[0];
+    const description = document.getElementById('typography-description');
+    if (description) description.textContent = preset.description;
+  }
+
+  persistActiveComposition() {
+    const item = this.carouselItems[this.activeCarouselIndex];
+    if (!item) return;
+    item.zoom = this.state.zoom;
+    item.panX = this.state.panX;
+    item.panY = this.state.panY;
+  }
+
+  activateCarouselItem(index) {
+    if (index < 0 || index >= this.carouselItems.length) return;
+    this.persistActiveComposition();
+    this.activeCarouselIndex = index;
+    const item = this.carouselItems[index];
+    this.currentImage = item.image;
+    this.currentGps = item.gps || null;
+    this.state.zoom = item.zoom ?? 1;
+    this.state.panX = item.panX ?? 0;
+    this.state.panY = item.panY ?? 0;
+    this.syncZoomUI();
+    this.updateGpsUI(this.currentGps);
+    this.renderCarouselEditor();
+    this.scheduleRender();
+  }
+
+  renderCarouselEditor() {
+    const editor = document.getElementById('carousel-editor');
+    const list = document.getElementById('carousel-list');
+    const count = document.getElementById('carousel-count');
+    if (!editor || !list || !count) return;
+
+    editor.hidden = this.carouselItems.length === 0;
+    count.textContent = `사진 ${this.carouselItems.length}장`;
+    list.innerHTML = '';
+
+    this.carouselItems.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = `carousel-item${index === this.activeCarouselIndex ? ' active' : ''}`;
+      const safeName = item.name
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      card.innerHTML = `
+        <span class="carousel-number">${index + 1}</span>
+        <img class="carousel-thumb" alt="${safeName}">
+        <div class="carousel-name" title="${safeName}">${safeName}</div>
+        <div class="carousel-actions">
+          <button type="button" data-action="left" aria-label="앞으로 이동" ${index === 0 ? 'disabled' : ''}>←</button>
+          <button type="button" data-action="right" aria-label="뒤로 이동" ${index === this.carouselItems.length - 1 ? 'disabled' : ''}>→</button>
+          <button type="button" data-action="remove" aria-label="사진 삭제">×</button>
+        </div>`;
+      const thumb = card.querySelector('.carousel-thumb');
+      thumb.src = item.previewUrl;
+      thumb.addEventListener('click', () => this.activateCarouselItem(index));
+      card.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => this.handleCarouselAction(index, button.dataset.action));
+      });
+      list.appendChild(card);
+    });
+    this.updateFilenamePreview();
+    const downloadButton = document.getElementById('btn-download-single');
+    if (downloadButton && this.state.mode === 'photo') {
+      downloadButton.textContent = this.carouselItems.length > 1
+        ? `📦 캐러셀 ${this.carouselItems.length}장 ZIP 다운로드`
+        : '📥 클린 사진 다운로드';
+    }
+  }
+
+  handleCarouselAction(index, action) {
+    if (action === 'remove') {
+      const [removed] = this.carouselItems.splice(index, 1);
+      if (removed?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl);
+      if (this.carouselItems.length === 0) {
+        this.activeCarouselIndex = -1;
+        this.currentImage = null;
+        this.renderCarouselEditor();
+        this.scheduleRender();
+        return;
+      }
+      this.activateCarouselItem(Math.min(index, this.carouselItems.length - 1));
+      return;
+    }
+
+    const target = action === 'left' ? index - 1 : index + 1;
+    if (target < 0 || target >= this.carouselItems.length) return;
+    [this.carouselItems[index], this.carouselItems[target]] = [this.carouselItems[target], this.carouselItems[index]];
+    this.activeCarouselIndex = target;
+    this.renderCarouselEditor();
+  }
+
   setZoom(newZoom, shouldSave = true) {
     this.state.zoom = Math.max(1.0, Math.min(3.0, parseFloat(newZoom)));
     this.syncZoomUI();
+    this.persistActiveComposition();
     if (shouldSave) {
       this.saveState();
     }
@@ -292,14 +412,15 @@ class App {
     dropzone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        this.handleFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files && e.dataTransfer.files.length) {
+        this.handleFiles(Array.from(e.dataTransfer.files));
       }
     });
 
     fileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) {
-        this.handleFile(e.target.files[0]);
+      if (e.target.files && e.target.files.length) {
+        this.handleFiles(Array.from(e.target.files));
+        e.target.value = '';
       }
     });
 
@@ -375,6 +496,7 @@ class App {
     if (chkPanoramaOverlay) {
       chkPanoramaOverlay.addEventListener('change', (e) => {
         this.state.panoramaOverlay = e.target.checked;
+        this.updateModeUI(this.state.mode);
         this.saveState();
         this.scheduleRender();
       });
@@ -398,6 +520,17 @@ class App {
     bindInput('input-location', 'location');
     bindInput('input-date', 'captureDate');
     bindInput('input-camera-tag', 'customCameraTag');
+    bindInput('input-caption-note', 'captionNote');
+
+    const typographySelect = document.getElementById('select-typography');
+    if (typographySelect) {
+      typographySelect.addEventListener('change', (e) => {
+        this.state.typographyPreset = e.target.value;
+        this.updateTypographyDescription();
+        this.saveState();
+        this.scheduleRender();
+      });
+    }
 
     // Preset dropdown change
     const presetSelect = document.getElementById('select-preset');
@@ -461,6 +594,7 @@ class App {
         this.state.zoom = 1.0;
         this.state.panX = 0;
         this.state.panY = 0;
+        this.persistActiveComposition();
         this.syncZoomUI();
         this.saveState();
         this.scheduleRender();
@@ -511,9 +645,6 @@ class App {
     if (this.btnFetchAddress) {
       this.btnFetchAddress.addEventListener('click', () => this.handleReverseGeocode());
     }
-    if (this.chkAppendCoords) {
-      this.chkAppendCoords.addEventListener('change', () => this.handleAppendCoordsToggle());
-    }
 
     // Instagram Caption clipboard copy (Observation-based journal notes)
     const btnCopyCaption = document.getElementById('btn-copy-caption');
@@ -555,6 +686,11 @@ class App {
     if (btnDownloadZip) {
       btnDownloadZip.addEventListener('click', () => this.exportSeamlessZip());
     }
+
+    const btnSaveDraft = document.getElementById('btn-save-draft');
+    if (btnSaveDraft) btnSaveDraft.addEventListener('click', () => this.saveDraft());
+    const btnClearDraft = document.getElementById('btn-clear-draft');
+    if (btnClearDraft) btnClearDraft.addEventListener('click', () => this.clearDraft());
   }
 
   setupCanvasInteractions() {
@@ -581,6 +717,7 @@ class App {
       const factor = 0.003 / this.state.zoom;
       this.state.panX = Math.max(-1, Math.min(1, initialPanX - dx * factor));
       this.state.panY = Math.max(-1, Math.min(1, initialPanY - dy * factor));
+      this.persistActiveComposition();
       this.scheduleRender();
     };
 
@@ -645,6 +782,7 @@ class App {
   }
 
   setMode(mode) {
+    this.persistActiveComposition();
     this.state.mode = mode;
     this.state.panX = 0;
     this.state.panY = 0;
@@ -692,7 +830,9 @@ class App {
       if (mode === 'chapter') {
         btnDownloadSingle.textContent = '📥 챕터 세트 다운로드 (표지+클린 2장)';
       } else {
-        btnDownloadSingle.textContent = '📥 클린 사진 다운로드';
+        btnDownloadSingle.textContent = this.carouselItems.length > 1
+          ? `📦 캐러셀 ${this.carouselItems.length}장 ZIP 다운로드`
+          : '📥 클린 사진 다운로드';
       }
     }
 
@@ -706,6 +846,10 @@ class App {
     const groupPhotoTitle = document.getElementById('group-photo-title');
     const groupLocationDate = document.getElementById('group-location-date');
     const groupDate = document.getElementById('group-date');
+    const groupTypography = document.getElementById('group-typography');
+    if (groupTypography) {
+      groupTypography.style.display = (mode === 'chapter' || (mode === 'panorama' && this.state.panoramaOverlay)) ? 'block' : 'none';
+    }
 
     if (mode === 'photo') {
       if (journalDetails) journalDetails.open = false; // Collapsed by default for ultra-minimal 10s flow
@@ -816,7 +960,10 @@ class App {
       const f1 = ExportEngine.generateFileName(seriesNo, location, '01_COVER', ext, series);
       this.filenamePreview.textContent = `${f1} 외 1장 (02_CLEAN)`;
     } else {
-      this.filenamePreview.textContent = ExportEngine.generateFileName(seriesNo, location, '01_PHOTO', ext, series);
+      const first = ExportEngine.generateFileName(seriesNo, location, '01_PHOTO', ext, series);
+      this.filenamePreview.textContent = this.carouselItems.length > 1
+        ? `${first} 외 ${this.carouselItems.length - 1}장 (ZIP)`
+        : first;
     }
   }
 
@@ -936,10 +1083,7 @@ class App {
       this.currentGps.shortAddress = addressData.shortLabel;
       this.currentGps.fullAddress = addressData.fullLabel || addressData.shortLabel;
 
-      let finalLocation = addressData.shortLabel;
-      if (this.chkAppendCoords && this.chkAppendCoords.checked) {
-        finalLocation = `${finalLocation} · ${this.currentGps.dms}`;
-      }
+      const finalLocation = addressData.shortLabel;
 
       this.state.location = finalLocation;
       document.getElementById('input-location').value = finalLocation;
@@ -969,43 +1113,148 @@ class App {
     }, 1000);
   }
 
-  handleAppendCoordsToggle() {
-    if (!this.currentGps || !this.currentGps.shortAddress) return;
-    const shouldAppend = this.chkAppendCoords.checked;
-    let loc = this.currentGps.shortAddress;
-    if (shouldAppend) {
-      loc = `${loc} · ${this.currentGps.dms}`;
-    }
-    this.state.location = loc;
-    document.getElementById('input-location').value = loc;
-    this.saveState();
-    this.updateFilenamePreview();
-    this.scheduleRender();
+  async handleFile(file) {
+    return this.handleFiles([file]);
   }
 
-  async handleFile(file) {
+  async handleFiles(files, { replace = false } = {}) {
+    const imageFiles = files.filter(file => file && /^image\/(jpeg|png|webp)$/i.test(file.type));
+    if (!imageFiles.length) {
+      this.showToast('JPEG, PNG 또는 WebP 사진을 선택해 주세요.');
+      return;
+    }
+
+    const hasPlaceholder = this.carouselItems.some(item => item.isPlaceholder);
+    const existingCount = (replace || hasPlaceholder) ? 0 : this.carouselItems.length;
+    const acceptedFiles = imageFiles.slice(0, Math.max(0, 10 - existingCount));
+    if (!acceptedFiles.length) {
+      this.showToast('캐러셀에는 사진을 최대 10장까지 넣을 수 있습니다.');
+      return;
+    }
+
     const requestId = ++this.imageLoadRequestId;
-    try {
-      // 1. Read EXIF GPS from original File before canvas decoding
-      const gps = await this.extractGps(file);
-      if (requestId !== this.imageLoadRequestId) return;
-      this.updateGpsUI(gps);
+    const loaded = [];
+    this.showToast(`${acceptedFiles.length}장 불러오는 중...`);
 
-      // 2. Decode and downscale image
-      const image = await ImageLoader.loadFromFile(file);
-      if (requestId !== this.imageLoadRequestId) return;
-
-      this.currentImage = image;
-      this.state.panX = 0;
-      this.state.panY = 0;
-      this.state.zoom = 1.0;
-      this.syncZoomUI();
-      this.scheduleRender();
-      this.showToast('사진이 로드되었습니다.');
-    } catch (err) {
-      if (requestId === this.imageLoadRequestId) {
-        alert(err.message);
+    for (const file of acceptedFiles) {
+      try {
+        const [gps, image] = await Promise.all([
+          this.extractGps(file),
+          ImageLoader.loadFromFile(file)
+        ]);
+        if (requestId !== this.imageLoadRequestId) return;
+        loaded.push({
+          id: `${Date.now()}-${loaded.length}-${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name || `photo-${loaded.length + 1}`,
+          blob: file,
+          image,
+          previewUrl: URL.createObjectURL(file),
+          gps,
+          zoom: 1,
+          panX: 0,
+          panY: 0
+        });
+      } catch (err) {
+        console.warn(`Image load failed: ${file.name}`, err);
       }
+    }
+
+    if (!loaded.length) {
+      this.showToast('사진을 불러오지 못했습니다.');
+      return;
+    }
+
+    if (replace || hasPlaceholder) this.releaseCarouselItems();
+    const startIndex = this.carouselItems.length;
+    this.carouselItems.push(...loaded);
+    this.activateCarouselItem(startIndex);
+    this.updateModeUI(this.state.mode);
+    this.showToast(`${loaded.length}장이 캐러셀에 추가되었습니다.`);
+  }
+
+  releaseCarouselItems() {
+    this.carouselItems.forEach(item => {
+      if (item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+    });
+    this.carouselItems = [];
+    this.activeCarouselIndex = -1;
+  }
+
+  async saveDraft() {
+    if (!this.carouselItems.length) {
+      this.showToast('저장할 사진을 먼저 불러오세요.');
+      return;
+    }
+    this.persistActiveComposition();
+    try {
+      await DraftStore.save({
+        state: { ...this.state },
+        activeIndex: this.activeCarouselIndex,
+        items: this.carouselItems.map(item => ({
+          name: item.name,
+          blob: item.blob,
+          sourceUrl: item.blob ? null : item.previewUrl,
+          zoom: item.zoom,
+          panX: item.panX,
+          panY: item.panY,
+          gps: item.gps
+        }))
+      });
+      const status = document.getElementById('draft-status');
+      if (status) status.textContent = `저장 완료 · ${new Date().toLocaleString('ko-KR')} · 사진 ${this.carouselItems.length}장`;
+      this.showToast('현재 작업을 이 브라우저에 저장했습니다.');
+    } catch (err) {
+      console.error('Draft save failed:', err);
+      this.showToast('초안 저장에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
+    }
+  }
+
+  async restoreDraft() {
+    try {
+      const draft = await DraftStore.get();
+      if (!draft?.items?.length) return false;
+      this.state = { ...DEFAULT_STATE, ...draft.state };
+      const restored = [];
+      for (const saved of draft.items) {
+        if (!saved.blob && !saved.sourceUrl) continue;
+        const image = saved.blob
+          ? await ImageLoader.loadFromFile(new File([saved.blob], saved.name || 'draft-photo.jpg', { type: saved.blob.type || 'image/jpeg' }))
+          : await ImageLoader.loadFromUrl(saved.sourceUrl);
+        restored.push({
+          id: `${Date.now()}-${restored.length}`,
+          name: saved.name || `photo-${restored.length + 1}`,
+          blob: saved.blob,
+          image,
+          previewUrl: saved.blob ? URL.createObjectURL(saved.blob) : saved.sourceUrl,
+          gps: saved.gps || null,
+          zoom: saved.zoom ?? 1,
+          panX: saved.panX ?? 0,
+          panY: saved.panY ?? 0
+        });
+      }
+      if (!restored.length) return false;
+      this.releaseCarouselItems();
+      this.carouselItems = restored;
+      this.initPresetsUI();
+      this.activateCarouselItem(Math.min(draft.activeIndex ?? 0, restored.length - 1));
+      const status = document.getElementById('draft-status');
+      if (status) status.textContent = `저장된 작업 복원 · ${new Date(draft.savedAt).toLocaleString('ko-KR')} · 사진 ${restored.length}장`;
+      this.showToast('저장된 작업을 복원했습니다.');
+      return true;
+    } catch (err) {
+      console.warn('Draft restore failed:', err);
+      return false;
+    }
+  }
+
+  async clearDraft() {
+    try {
+      await DraftStore.clear();
+      const status = document.getElementById('draft-status');
+      if (status) status.textContent = '저장된 작업이 없습니다. 현재 편집 중인 사진은 유지됩니다.';
+      this.showToast('저장된 작업을 삭제했습니다.');
+    } catch (err) {
+      this.showToast('저장된 작업을 삭제하지 못했습니다.');
     }
   }
 
@@ -1016,6 +1265,7 @@ class App {
       if (requestId !== this.imageLoadRequestId) return;
 
       this.currentImage = image;
+      this.releaseCarouselItems();
       this.state.mode = sample.mode || 'photo';
       this.state.series = sample.series || 'PASSING PLACES';
       this.state.seriesNo = sample.seriesNo || sample.issueNo || '01';
@@ -1036,6 +1286,19 @@ class App {
       }
 
       this.updateGpsUI(null);
+      this.carouselItems = [{
+        id: `sample-${sample.id}`,
+        name: sample.name,
+        blob: null,
+        image,
+        previewUrl: sample.path,
+        gps: null,
+        zoom: 1,
+        panX: 0,
+        panY: 0
+      }];
+      this.activeCarouselIndex = 0;
+      this.renderCarouselEditor();
       this.initPresetsUI();
       this.scheduleRender();
       this.showToast(`샘플 '${sample.name}' 적용 완료`);
@@ -1049,12 +1312,31 @@ class App {
   /**
    * Only load initial image pixels, preserving user's saved state in localStorage
    */
+  async loadInitialDraftOrImage() {
+    if (await this.restoreDraft()) return;
+    return this.loadInitialImage();
+  }
+
   async loadInitialImage() {
     const requestId = ++this.imageLoadRequestId;
     try {
       const image = await ImageLoader.loadFromUrl(SAMPLE_PHOTOS[0].path);
       if (requestId !== this.imageLoadRequestId) return;
       this.currentImage = image;
+      this.carouselItems = [{
+        id: 'sample-initial',
+        name: SAMPLE_PHOTOS[0].name,
+        blob: null,
+        image,
+        previewUrl: SAMPLE_PHOTOS[0].path,
+        gps: null,
+        zoom: this.state.zoom,
+        panX: this.state.panX,
+        panY: this.state.panY,
+        isPlaceholder: true
+      }];
+      this.activeCarouselIndex = 0;
+      this.renderCarouselEditor();
       this.scheduleRender();
     } catch (err) {
       if (requestId === this.imageLoadRequestId) {
@@ -1090,6 +1372,7 @@ class App {
       'btn-download-single',
       'btn-download-s1',
       'btn-download-s2',
+      'btn-share-vertical-mobile',
       'btn-share-mobile',
       'btn-download-zip'
     ];
@@ -1125,6 +1408,10 @@ class App {
     this.showToast('고화질 렌더링 인코딩 중...');
 
     try {
+      if (this.state.mode === 'photo' && this.carouselItems.length > 1) {
+        await this.exportCarouselZip();
+        return;
+      }
       const artifacts = await this.getExportArtifacts();
       const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
       const series = this.state.series || 'PASSING PLACES';
@@ -1169,6 +1456,36 @@ class App {
     }
   }
 
+  async exportCarouselZip() {
+    if (typeof JSZip === 'undefined') throw new Error('ZIP 라이브러리를 불러오지 못했습니다.');
+    this.persistActiveComposition();
+    const zip = new JSZip();
+    const ext = this.state.exportQualityMode === 'png' ? 'png' : 'jpg';
+    const series = this.state.series || 'PASSING PLACES';
+    const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
+
+    for (let index = 0; index < this.carouselItems.length; index += 1) {
+      const item = this.carouselItems[index];
+      const itemState = {
+        ...this.state,
+        zoom: item.zoom ?? 1,
+        panX: item.panX ?? 0,
+        panY: item.panY ?? 0,
+        mode: 'photo'
+      };
+      const artifacts = await this.canvasEngine.renderExport(item.image, itemState);
+      const encoded = await ExportEngine.encodeCanvas(artifacts.canvas, this.state.exportQualityMode, this.state.autoFitTargetMB);
+      const suffix = `${String(index + 1).padStart(2, '0')}_PHOTO`;
+      const filename = ExportEngine.generateFileName(seriesNo, this.state.location, suffix, ext, series);
+      zip.file(filename, encoded.blob);
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const zipName = ExportEngine.generateFileName(seriesNo, this.state.location, 'CAROUSEL', 'zip', series);
+    ExportEngine.downloadBlob(blob, zipName);
+    this.showToast(`캐러셀 ${this.carouselItems.length}장 ZIP 저장 완료!`);
+  }
+
   async shareVerticalMobile() {
     if (this.isExporting) {
       this.showToast('이미지 처리 중입니다. 잠시만 기다려주세요.');
@@ -1179,31 +1496,43 @@ class App {
     this.showToast('모바일 공유용 이미지 준비 중...');
 
     try {
-      const artifacts = await this.getExportArtifacts();
       const ext = (this.state.exportQualityMode === 'png') ? 'png' : 'jpg';
       const mime = (this.state.exportQualityMode === 'png') ? 'image/png' : 'image/jpeg';
       const series = this.state.series || 'PASSING PLACES';
       const seriesNo = this.state.seriesNo || this.state.issueNo || '01';
+      const files = [];
 
-      const res1 = await ExportEngine.encodeCanvas(
-        artifacts.isMultiSlide ? artifacts.slide1 : artifacts.canvas,
-        this.state.exportQualityMode,
-        this.state.autoFitTargetMB
-      );
-      const name1 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag1 || '01_PHOTO', ext, series);
-      const file1 = new File([res1.blob], name1, { type: mime });
-
-      const files = [file1];
-
-      if (artifacts.isMultiSlide && artifacts.slide2) {
-        const res2 = await ExportEngine.encodeCanvas(
-          artifacts.slide2,
+      if (this.state.mode === 'photo' && this.carouselItems.length > 1) {
+        this.persistActiveComposition();
+        for (let index = 0; index < this.carouselItems.length; index += 1) {
+          const item = this.carouselItems[index];
+          const artifacts = await this.canvasEngine.renderExport(item.image, {
+            ...this.state,
+            mode: 'photo',
+            zoom: item.zoom,
+            panX: item.panX,
+            panY: item.panY
+          });
+          const encoded = await ExportEngine.encodeCanvas(artifacts.canvas, this.state.exportQualityMode, this.state.autoFitTargetMB);
+          const suffix = `${String(index + 1).padStart(2, '0')}_PHOTO`;
+          const name = ExportEngine.generateFileName(seriesNo, this.state.location, suffix, ext, series);
+          files.push(new File([encoded.blob], name, { type: mime }));
+        }
+      } else {
+        const artifacts = await this.getExportArtifacts();
+        const res1 = await ExportEngine.encodeCanvas(
+          artifacts.isMultiSlide ? artifacts.slide1 : artifacts.canvas,
           this.state.exportQualityMode,
           this.state.autoFitTargetMB
         );
-        const name2 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag2 || '02_CLEAN', ext, series);
-        const file2 = new File([res2.blob], name2, { type: mime });
-        files.push(file2);
+        const name1 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag1 || '01_PHOTO', ext, series);
+        files.push(new File([res1.blob], name1, { type: mime }));
+
+        if (artifacts.isMultiSlide && artifacts.slide2) {
+          const res2 = await ExportEngine.encodeCanvas(artifacts.slide2, this.state.exportQualityMode, this.state.autoFitTargetMB);
+          const name2 = ExportEngine.generateFileName(seriesNo, this.state.location, artifacts.tag2 || '02_CLEAN', ext, series);
+          files.push(new File([res2.blob], name2, { type: mime }));
+        }
       }
 
       const shareRes = await ExportEngine.shareFiles(files, `LINES IN TRANSIT - ${series} No.${seriesNo}`);

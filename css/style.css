@@ -571,6 +571,120 @@ input[type="text"]:focus, select:focus, textarea:focus {
   margin-top: 0.25rem;
 }
 
+.carousel-editor {
+  margin-top: 0.75rem;
+}
+
+.carousel-editor[hidden] {
+  display: none;
+}
+
+.carousel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+}
+
+.carousel-heading span:first-child {
+  color: var(--accent-gold);
+  white-space: nowrap;
+}
+
+.carousel-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.carousel-item {
+  position: relative;
+  min-width: 0;
+  padding: 0.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.carousel-item.active {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.carousel-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.carousel-number {
+  position: absolute;
+  top: 0.42rem;
+  left: 0.42rem;
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(12, 14, 18, 0.82);
+  color: #fff;
+  font: 600 10px var(--font-mono);
+}
+
+.carousel-name {
+  padding: 0.3rem 0.1rem 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.62rem;
+}
+
+.carousel-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2rem;
+}
+
+.carousel-actions button {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-muted);
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+.carousel-actions button:hover:not(:disabled) {
+  color: #fff;
+  border-color: var(--border-strong);
+}
+
+.carousel-actions button:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.draft-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.draft-status,
+.field-help {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
 /* Primary Action Buttons */
 .btn-primary {
   width: 100%;

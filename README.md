@@ -16,6 +16,13 @@
 | **📖 CHAPTER**<br>*(시리즈 표지 + 클린)* | 새로운 여행지나 연재 시리즈의 개막을 알리는 에디토리얼 표지 세트 | 2장 (`01_COVER` + `02_CLEAN`) | 마스트헤드 + 시리즈명/No + 사진제목 + 장소/연도 (글래스 박스 없음) |
 | **🌊 PANORAMA**<br>*(가로 2분할)* | 광활한 풍경이나 수평선을 매끄럽게 이어주는 2-Slide 심리스 파노라마 | 2장 (`01_LEFT` + `02_RIGHT`) | 100% 클린 사진 기본 (미니멀 텍스트 오버레이 선택 가능) |
 
+### PHOTO 캐러셀 제작
+
+- JPEG·PNG·WebP 사진을 최대 10장까지 한 번에 불러올 수 있습니다.
+- 썸네일에서 사진 순서를 바꾸고, 각 사진의 확대 배율과 위치를 따로 조정합니다.
+- 완성된 캐러셀은 게시 순서가 포함된 파일명으로 ZIP에 묶어 내보냅니다.
+- 현재 작업 저장을 누르면 사진, 순서, 구도와 캡션을 브라우저의 IndexedDB에 보관해 다음 방문에 이어서 편집할 수 있습니다. 초안은 외부 서버로 전송되지 않습니다.
+
 ---
 
 ## 🧭 브랜드 원칙: 70 · 20 · 10
@@ -37,12 +44,11 @@
 
 ## 🔤 통합 브랜드 타이포그래피 (Brand Typography)
 
-복잡한 폰트 선택 드롭다운을 제거하고, 건축과 도시의 정갈한 비례감을 주는 단일 서체 시스템으로 통일했습니다.
+CHAPTER 표지는 포함된 로컬 서체로 만든 세 가지 조합 중 하나를 선택할 수 있습니다. PHOTO에는 글자가 없고 PANORAMA는 오버레이를 켠 경우에만 선택한 조합을 사용합니다.
 
-- **마스트헤드 (`LINES IN TRANSIT`)**: `Archivo 800` (대문자, 자간 `-0.035em`)
-- **시리즈 & No (`PASSING PLACES · 01`)**: `Archivo 700` (자간 `0.08em`)
-- **사진 제목 (`KANAZAWA WATERWAY`)**: `Pretendard 600` (자간 `-0.02em`)
-- **장소 & 연도 (`KANAZAWA · JAPAN · 2026`)**: `Pretendard 400~500` (자간 `0.02em`)
+- **Editorial**: Archivo 마스트헤드 + Pretendard 제목
+- **Minimal**: Pretendard 중심의 절제된 조판
+- **Archive**: IBM Plex Mono 메타데이터 + Archivo 제목
 
 ---
 
@@ -83,6 +89,7 @@ lines-in-transit-studio/
 ├── js/
 │   ├── presets.js          # 시리즈 프리셋(5선+직접입력), 3개 장르 샘플, 브랜드 타이포
 │   ├── image-loader.js     # 이미지 디코딩, 메모리 안전 다운스케일
+│   ├── draft-store.js      # IndexedDB 기반 브라우저 로컬 작업 저장
 │   ├── canvas-engine.js    # PHOTO/CHAPTER/PANORAMA 렌더러, fitText 오토스케일
 │   ├── export-engine.js    # 가변 품질 JPEG/PNG 인코딩, Web Share, ZIP 생성
 │   └── app.js              # RAF 렌더 루프, 핀치 줌, EXIF GPS, 캡션 복사

@@ -4,11 +4,15 @@
  * Decoupled from preview overlays; pure photographic rendering.
  */
 
-import { BRAND_TYPOGRAPHY } from './presets.js';
+import { BRAND_TYPOGRAPHY, TYPOGRAPHY_PRESETS } from './presets.js';
 
 export class CanvasEngine {
   constructor() {
     this.fontsLoaded = false;
+  }
+
+  static getTypography(presetId) {
+    return TYPOGRAPHY_PRESETS.find(preset => preset.id === presetId) || BRAND_TYPOGRAPHY;
   }
 
   async ensureFontsReady() {
@@ -300,7 +304,7 @@ export class CanvasEngine {
       ctx.fillRect(0, 0, W, H);
     }
 
-    const typo = BRAND_TYPOGRAPHY;
+    const typo = CanvasEngine.getTypography(state.typographyPreset);
 
     // 1. Subtle top gradient for masthead legibility
     const topGrad = ctx.createLinearGradient(0, 0, 0, 190);
@@ -365,7 +369,7 @@ export class CanvasEngine {
 
     // Only render subtle text if specifically requested by user
     if (state.panoramaOverlay) {
-      const typo = BRAND_TYPOGRAPHY;
+      const typo = CanvasEngine.getTypography(state.typographyPreset);
 
       // Slide 1 Top-Left: Masthead (subtle)
       CanvasEngine.applyText(ctx, 'LINES IN TRANSIT', 60, 75, typo.mastheadFont, typo.mastheadWeight, 24, typo.mastheadSpacing, 'rgba(255, 255, 255, 0.85)', 'left');
