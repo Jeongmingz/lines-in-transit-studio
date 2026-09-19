@@ -217,8 +217,8 @@ header {
 
 .safe-label {
   position: absolute;
-  top: 7px;
-  left: 9px;
+  top: -24px;
+  left: -1px;
   padding: 3px 6px;
   border-radius: 3px;
   color: rgba(219, 234, 254, 0.95);
