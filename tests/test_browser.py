@@ -72,6 +72,22 @@ def run_tests():
 
             # Test 1: LocalStorage state preservation on initial load
             page.goto(base_url)
+            preview_top = page.locator(".preview-pane").bounding_box()["y"]
+            sidebar_scrollable = page.locator(".control-sidebar").evaluate(
+                "el => el.scrollHeight > el.clientHeight"
+            )
+            assert_true(sidebar_scrollable, "Desktop control sidebar has its own scroll range")
+            page.locator(".control-sidebar").evaluate("el => el.scrollTop = 320")
+            assert_true(page.evaluate("window.scrollY") == 0, "Desktop page remains locked while controls scroll")
+            assert_true(
+                page.locator(".preview-pane").bounding_box()["y"] == preview_top,
+                "Left preview stays fixed while the right sidebar scrolls",
+            )
+            page.locator(".control-sidebar").evaluate("el => el.scrollTop = 0")
+            page.set_viewport_size({"width": 800, "height": 900})
+            mobile_overflow = page.evaluate("getComputedStyle(document.body).overflowY")
+            assert_true(mobile_overflow == "auto", "Mobile layout restores normal page scrolling")
+            page.set_viewport_size({"width": 1280, "height": 800})
             page.evaluate("""() => {
                 localStorage.setItem('lit_studio_state', JSON.stringify({
                     mode: 'panorama',
