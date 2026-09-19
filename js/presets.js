@@ -93,7 +93,7 @@ export const TYPOGRAPHY_PRESETS = [
   {
     id: 'editorial',
     name: 'Editorial — Archivo + Pretendard',
-    description: '단단한 마스트헤드와 차분한 본문',
+    description: '사진 위 한 줄 레일과 차분한 정보 위계',
     mastheadFont: "'Archivo', 'Pretendard', sans-serif",
     mastheadWeight: '800',
     mastheadSpacing: '-0.035em',

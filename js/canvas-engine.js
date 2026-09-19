@@ -6,9 +6,17 @@
 
 import { BRAND_TYPOGRAPHY, TYPOGRAPHY_PRESETS } from './presets.js';
 
+export const TYPE_SAFE_AREA = Object.freeze({
+  top: 72,
+  right: 72,
+  bottom: 72,
+  left: 72
+});
+
 export class CanvasEngine {
   constructor() {
     this.fontsLoaded = false;
+    this.lastTextLayout = [];
   }
 
   static getTypography(presetId) {
@@ -104,6 +112,63 @@ export class CanvasEngine {
     ctx.fillStyle = color;
     ctx.textAlign = align;
     ctx.fillText(text, x, y);
+  }
+
+  /**
+   * Draw text only after fitting and clamping its measured glyph bounds to a safe area.
+   * Returns the final bounds so browser tests can verify the exported composition.
+   */
+  static drawSafeText(ctx, options) {
+    const {
+      text, x, y, fontFamily, weight, initialSize, minSize, letterSpacing,
+      color, align = 'left', safeArea, maxWidth = safeArea.right - safeArea.left
+    } = options;
+    if (!text) return null;
+
+    const availableWidth = Math.min(maxWidth, safeArea.right - safeArea.left);
+    const fit = CanvasEngine.fitText(
+      ctx, text, availableWidth, initialSize, minSize,
+      fontFamily, weight, letterSpacing
+    );
+
+    if (ctx.letterSpacing !== undefined) {
+      ctx.letterSpacing = letterSpacing || 'normal';
+    }
+    const weightString = typeof weight === 'boolean'
+      ? (weight ? 'bold ' : '')
+      : (weight ? `${weight} ` : '');
+    ctx.font = `${weightString}${fit.size}px ${fontFamily}`;
+    const metrics = ctx.measureText(fit.text);
+    const ascent = metrics.actualBoundingBoxAscent || fit.size * 0.78;
+    const descent = metrics.actualBoundingBoxDescent || fit.size * 0.22;
+    const width = metrics.width;
+    let safeX = x;
+
+    if (align === 'right') {
+      safeX = Math.min(safeArea.right, Math.max(safeArea.left + width, x));
+    } else if (align === 'center') {
+      safeX = Math.min(safeArea.right - width / 2, Math.max(safeArea.left + width / 2, x));
+    } else {
+      safeX = Math.min(safeArea.right - width, Math.max(safeArea.left, x));
+    }
+    const safeY = Math.min(safeArea.bottom - descent, Math.max(safeArea.top + ascent, y));
+
+    CanvasEngine.applyText(
+      ctx, fit.text, safeX, safeY, fontFamily, weight, fit.size,
+      letterSpacing, color, align
+    );
+
+    let left = safeX;
+    if (align === 'right') left = safeX - width;
+    if (align === 'center') left = safeX - width / 2;
+    return {
+      text: fit.text,
+      left,
+      right: left + width,
+      top: safeY - ascent,
+      bottom: safeY + descent,
+      size: fit.size
+    };
   }
 
   /**
@@ -305,47 +370,80 @@ export class CanvasEngine {
     }
 
     const typo = CanvasEngine.getTypography(state.typographyPreset);
+    const safe = {
+      top: TYPE_SAFE_AREA.top,
+      right: W - TYPE_SAFE_AREA.right,
+      bottom: H - TYPE_SAFE_AREA.bottom,
+      left: TYPE_SAFE_AREA.left
+    };
+    this.lastTextLayout = [];
 
     // 1. Subtle top gradient for masthead legibility
-    const topGrad = ctx.createLinearGradient(0, 0, 0, 190);
-    topGrad.addColorStop(0, 'rgba(10, 12, 16, 0.70)');
-    topGrad.addColorStop(0.65, 'rgba(10, 12, 16, 0.28)');
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 220);
+    topGrad.addColorStop(0, 'rgba(10, 12, 16, 0.66)');
+    topGrad.addColorStop(0.65, 'rgba(10, 12, 16, 0.22)');
     topGrad.addColorStop(1, 'rgba(10, 12, 16, 0.0)');
     ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, W, 190);
+    ctx.fillRect(0, 0, W, 220);
 
     // 2. Subtle bottom gradient for title and location legibility
-    const btmGrad = ctx.createLinearGradient(0, H - 230, 0, H);
+    const btmGrad = ctx.createLinearGradient(0, H - 300, 0, H);
     btmGrad.addColorStop(0, 'rgba(10, 12, 16, 0.0)');
-    btmGrad.addColorStop(0.4, 'rgba(10, 12, 16, 0.35)');
-    btmGrad.addColorStop(1, 'rgba(10, 12, 16, 0.75)');
+    btmGrad.addColorStop(0.5, 'rgba(10, 12, 16, 0.30)');
+    btmGrad.addColorStop(1, 'rgba(10, 12, 16, 0.72)');
     ctx.fillStyle = btmGrad;
-    ctx.fillRect(0, H - 230, W, 230);
+    ctx.fillRect(0, H - 300, W, 300);
 
-    // Top: Masthead
+    // Editorial rail: masthead and series share one measured line.
     const mastheadText = 'LINES IN TRANSIT';
-    const mastheadFit = CanvasEngine.fitText(ctx, mastheadText, W - 120, 48, 32, typo.mastheadFont, typo.mastheadWeight, typo.mastheadSpacing);
-    CanvasEngine.applyText(ctx, mastheadFit.text, 60, 80, typo.mastheadFont, typo.mastheadWeight, mastheadFit.size, typo.mastheadSpacing, '#ffffff', 'left');
-
-    // Top Sub: Series & Number (e.g. PASSING PLACES · 01)
     const seriesName = state.series || 'PASSING PLACES';
     const seriesNum = state.seriesNo || state.issueNo || '01';
     const seriesText = `${seriesName.toUpperCase()} · ${seriesNum}`;
-    const seriesFit = CanvasEngine.fitText(ctx, seriesText, W - 120, 22, 16, typo.seriesFont, typo.seriesWeight, typo.seriesSpacing);
-    CanvasEngine.applyText(ctx, seriesFit.text, 60, 115, typo.seriesFont, typo.seriesWeight, seriesFit.size, typo.seriesSpacing, 'rgba(230, 238, 250, 0.88)', 'left');
+    const mastheadBounds = CanvasEngine.drawSafeText(ctx, {
+      text: mastheadText, x: safe.left, y: 116, fontFamily: typo.mastheadFont,
+      weight: typo.mastheadWeight, initialSize: 42, minSize: 32,
+      letterSpacing: typo.mastheadSpacing, color: '#ffffff', align: 'left',
+      safeArea: safe, maxWidth: 590
+    });
+    const seriesBounds = CanvasEngine.drawSafeText(ctx, {
+      text: seriesText, x: safe.right, y: 112, fontFamily: typo.seriesFont,
+      weight: typo.seriesWeight, initialSize: 18, minSize: 14,
+      letterSpacing: typo.seriesSpacing, color: 'rgba(238, 242, 248, 0.90)', align: 'right',
+      safeArea: safe, maxWidth: 300
+    });
+    this.lastTextLayout.push(...[mastheadBounds, seriesBounds].filter(Boolean));
 
-    // Bottom - Line 1: Photo Title
-    const rawTitle = (state.photoTitle || 'UNTITLED').toUpperCase();
-    const titleFit = CanvasEngine.fitText(ctx, rawTitle, W - 120, 40, 26, typo.titleFont, typo.titleWeight, typo.titleSpacing);
-    CanvasEngine.applyText(ctx, titleFit.text, 60, H - 105, typo.titleFont, typo.titleWeight, titleFit.size, typo.titleSpacing, '#ffffff', 'left');
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.56)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(safe.left, 140.5);
+    ctx.lineTo(safe.right, 140.5);
+    ctx.stroke();
 
-    // Bottom - Line 2: Location and Date/Year (e.g. KANAZAWA · JAPAN · 2026)
+    // Bottom information block stays quiet until the author supplies metadata.
+    const rawTitle = (state.photoTitle || '').trim().toUpperCase();
     const locParts = [];
     if (state.location) locParts.push(state.location.toUpperCase());
     if (state.captureDate) locParts.push(state.captureDate);
-    const locDateText = locParts.length > 0 ? locParts.join(' · ') : 'SCENE';
-    const locFit = CanvasEngine.fitText(ctx, locDateText, W - 120, 23, 17, typo.locationFont, typo.locationWeight, typo.locationSpacing);
-    CanvasEngine.applyText(ctx, locFit.text, 60, H - 62, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, 'rgba(230, 238, 250, 0.90)', 'left');
+    const locDateText = locParts.join(' · ');
+
+    if (rawTitle || locDateText) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+      ctx.fillRect(safe.left, 1156, 48, 2);
+    }
+    const titleBounds = CanvasEngine.drawSafeText(ctx, {
+      text: rawTitle, x: safe.left, y: 1216, fontFamily: typo.titleFont,
+      weight: typo.titleWeight, initialSize: 42, minSize: 26,
+      letterSpacing: typo.titleSpacing, color: '#ffffff', align: 'left',
+      safeArea: safe, maxWidth: safe.right - safe.left
+    });
+    const locationBounds = CanvasEngine.drawSafeText(ctx, {
+      text: locDateText, x: safe.left, y: 1258, fontFamily: typo.locationFont,
+      weight: typo.locationWeight, initialSize: 20, minSize: 15,
+      letterSpacing: typo.locationSpacing, color: 'rgba(238, 242, 248, 0.90)', align: 'left',
+      safeArea: safe, maxWidth: safe.right - safe.left
+    });
+    this.lastTextLayout.push(...[titleBounds, locationBounds].filter(Boolean));
   }
 
   /**
@@ -370,18 +468,36 @@ export class CanvasEngine {
     // Only render subtle text if specifically requested by user
     if (state.panoramaOverlay) {
       const typo = CanvasEngine.getTypography(state.typographyPreset);
+      const slide1Safe = { top: 72, right: 1008, bottom: 1278, left: 72 };
+      const slide2Safe = { top: 72, right: 2088, bottom: 1278, left: 1152 };
+      this.lastTextLayout = [];
 
       // Slide 1 Top-Left: Masthead (subtle)
-      CanvasEngine.applyText(ctx, 'LINES IN TRANSIT', 60, 75, typo.mastheadFont, typo.mastheadWeight, 24, typo.mastheadSpacing, 'rgba(255, 255, 255, 0.85)', 'left');
+      this.lastTextLayout.push(CanvasEngine.drawSafeText(ctx, {
+        text: 'LINES IN TRANSIT', x: slide1Safe.left, y: 104,
+        fontFamily: typo.mastheadFont, weight: typo.mastheadWeight,
+        initialSize: 24, minSize: 18, letterSpacing: typo.mastheadSpacing,
+        color: 'rgba(255, 255, 255, 0.85)', align: 'left', safeArea: slide1Safe
+      }));
 
       // Slide 1 Bottom-Right: subtle arrow
-      CanvasEngine.applyText(ctx, '→', W_single - 60, H - 60, typo.seriesFont, '600', 26, 'normal', 'rgba(255, 255, 255, 0.85)', 'right');
+      this.lastTextLayout.push(CanvasEngine.drawSafeText(ctx, {
+        text: '→', x: slide1Safe.right, y: 1260, fontFamily: typo.seriesFont,
+        weight: '600', initialSize: 26, minSize: 22, letterSpacing: 'normal',
+        color: 'rgba(255, 255, 255, 0.85)', align: 'right', safeArea: slide1Safe
+      }));
 
       // Slide 2 Bottom-Right: Location
       if (state.location) {
-        const locFit = CanvasEngine.fitText(ctx, state.location.toUpperCase(), 400, 22, 16, typo.locationFont, typo.locationWeight, typo.locationSpacing);
-        CanvasEngine.applyText(ctx, locFit.text, W - 60, H - 60, typo.locationFont, typo.locationWeight, locFit.size, typo.locationSpacing, 'rgba(235, 240, 250, 0.85)', 'right');
+        this.lastTextLayout.push(CanvasEngine.drawSafeText(ctx, {
+          text: state.location.toUpperCase(), x: slide2Safe.right, y: 1260,
+          fontFamily: typo.locationFont, weight: typo.locationWeight,
+          initialSize: 22, minSize: 16, letterSpacing: typo.locationSpacing,
+          color: 'rgba(235, 240, 250, 0.85)', align: 'right',
+          safeArea: slide2Safe, maxWidth: 440
+        }));
       }
+      this.lastTextLayout = this.lastTextLayout.filter(Boolean);
     }
   }
 

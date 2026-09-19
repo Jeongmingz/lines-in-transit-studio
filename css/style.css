@@ -208,11 +208,23 @@ header {
 
 .guide-box {
   position: absolute;
-  top: 4%;
-  left: 5%;
-  right: 5%;
-  bottom: 4%;
+  top: 5.333333%;
+  left: 6.666667%;
+  right: 6.666667%;
+  bottom: 5.333333%;
   border: 1px dashed rgba(59, 130, 246, 0.75);
+}
+
+.safe-label {
+  position: absolute;
+  top: 7px;
+  left: 9px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: rgba(219, 234, 254, 0.95);
+  background: rgba(15, 23, 42, 0.78);
+  font: 600 9px/1.2 'IBM Plex Mono', monospace;
+  letter-spacing: 0.08em;
 }
 
 .guide-axis-v {
@@ -233,7 +245,7 @@ header {
   border-top: 1px dashed rgba(59, 130, 246, 0.45);
 }
 
-/* Seamless 2-Slide Guides (Slide 1: 54..1026px, Slide 2: 1134..2106px) */
+/* Seamless 2-Slide type-safe guides (72px inset per 1080px slide) */
 .guides-seamless {
   display: none;
 }
@@ -244,19 +256,19 @@ header {
 
 .guide-slide-box {
   position: absolute;
-  top: 4%;
-  bottom: 4%;
+  top: 5.333333%;
+  bottom: 5.333333%;
   border: 1px dashed rgba(59, 130, 246, 0.75);
 }
 
 .guide-slide-box.slide-1 {
-  left: 2.5%;
-  width: 45%;
+  left: 3.333333%;
+  width: 43.333333%;
 }
 
 .guide-slide-box.slide-2 {
-  left: 52.5%;
-  width: 45%;
+  left: 53.333333%;
+  width: 43.333333%;
 }
 
 .slide-label {

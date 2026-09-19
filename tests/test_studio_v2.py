@@ -62,6 +62,19 @@ def run():
             page.locator("#select-typography").select_option("archive")
             check(page.evaluate("window.__app_instance__.state.typographyPreset") == "archive", "CHAPTER typography selection updates render state")
 
+            page.locator("#input-title").fill("A VERY LONG TITLE THAT MUST STAY INSIDE THE TYPE SAFE AREA")
+            page.locator("#input-title").dispatch_event("input")
+            page.locator("#input-location").fill("SEOUL · REPUBLIC OF KOREA · A LONG LOCATION LABEL")
+            page.locator("#input-location").dispatch_event("input")
+            page.wait_for_function("window.__app_instance__.canvasEngine.lastTextLayout.length === 4")
+            text_bounds = page.evaluate("window.__app_instance__.canvasEngine.lastTextLayout")
+            check(len(text_bounds) == 4, "CHAPTER renderer records every visible text block")
+            for bounds in text_bounds:
+                check(bounds["left"] >= 71.5, f'{bounds["text"]} stays inside the left type-safe edge')
+                check(bounds["right"] <= 1008.5, f'{bounds["text"]} stays inside the right type-safe edge')
+                check(bounds["top"] >= 71.5, f'{bounds["text"]} stays inside the top type-safe edge')
+                check(bounds["bottom"] <= 1278.5, f'{bounds["text"]} stays inside the bottom type-safe edge')
+
             page.locator('[data-mode="photo"]').click()
             page.locator("#journal-summary").click()
             page.locator("#input-caption-note").fill("빛이 벽을 가로지르는 순간 멈췄다.")
